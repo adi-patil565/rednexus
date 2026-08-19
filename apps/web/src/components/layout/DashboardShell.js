@@ -74,10 +74,21 @@ export default function DashboardShell({ children, title, subtitle }) {
   }
 
   if (profile.role !== 'BLOOD_BANK_STAFF') {
+    // A dead end is a bug. An admin who lands here needs the door, not
+    // just the explanation.
     return (
       <div className="mx-auto max-w-md p-xl">
-        <Alert tone="warning" title="Wrong dashboard">
-          This account is a platform administrator, not blood bank staff.
+        <Alert tone="info" title="You are a platform administrator">
+          This dashboard is for blood bank staff. Administrators verify which
+          blood banks are on the platform.
+          <div className="mt-md flex gap-md">
+            <Link href="/admin">
+              <Button>Go to administration</Button>
+            </Link>
+            <Button variant="secondary" onClick={logout}>
+              Sign out
+            </Button>
+          </div>
         </Alert>
       </div>
     );

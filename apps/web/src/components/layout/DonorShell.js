@@ -66,11 +66,18 @@ export default function DonorShell({ children, title }) {
     return (
       <div className="mx-auto max-w-md p-xl">
         <Alert tone="info" title="This is the donor app">
-          {profile?.kind === 'STAFF' || profile?.kind === 'ADMIN' ? (
+          {profile?.kind === 'STAFF' ? (
             <>
               Your account belongs to a blood bank.{' '}
               <Link className="font-semibold text-primary underline" href="/dashboard">
                 Go to the dashboard
+              </Link>
+            </>
+          ) : profile?.kind === 'ADMIN' ? (
+            <>
+              You are a platform administrator.{' '}
+              <Link className="font-semibold text-primary underline" href="/admin">
+                Go to administration
               </Link>
             </>
           ) : (

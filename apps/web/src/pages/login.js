@@ -44,8 +44,11 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
+  // Already signed in: hand off to the index, which routes by role.
+  // Sending everyone to /dashboard was wrong for admins and donors -
+  // an admin landed on "wrong dashboard" with no way out.
   if (isAuthenticated) {
-    router.replace('/dashboard');
+    router.replace('/');
     return null;
   }
 
@@ -55,7 +58,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      router.replace('/dashboard');
+      router.replace('/');
     } catch (err) {
       setError(FRIENDLY_ERRORS[err.code] ?? 'Could not sign you in. Please try again.');
     } finally {

@@ -12,7 +12,7 @@
 // needed and which blood bank asked - enough to decide, and nothing
 // that lets them bypass the institution.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -67,6 +67,16 @@ function AlertCard({ alert, onDone }) {
 export default function DonorHome() {
   const { profile, isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
+
+  // This route is the donor home AND the post-login landing point, so it
+  // is where role dispatch belongs. Staff and admins are sent to their
+  // own surface rather than shown a donor page they cannot use.
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    if (profile?.kind === 'ADMIN') router.replace('/admin');
+    else if (profile?.kind === 'STAFF') router.replace('/dashboard');
+  }, [isLoading, isAuthenticated, profile, router]);
 
   const { data, isLoading: alertsLoading } = useQuery({
     queryKey: ['my-alerts'],
