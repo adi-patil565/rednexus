@@ -1,0 +1,89 @@
+# ==========================================
+# SECRETS — never commit these
+# ==========================================
+.env
+.env.*
+!.env.example
+
+# Firebase service account private keys (FULL admin access to the project)
+serviceAccountKey.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json
+firebase-debug.log
+.firebaserc
+
+# Generic credential files
+*.pem
+*.key
+credentials.json
+
+# ==========================================
+# Dependencies
+# ==========================================
+node_modules/
+.pnp
+.pnp.js
+.yarn/
+
+# ==========================================
+# Builds & caches
+# ==========================================
+.next/
+out/
+build/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# ==========================================
+# Python (ml-service)
+# ==========================================
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Trained model artifacts — regenerate via training pipeline
+ml-service/models/
+*.pkl
+*.joblib
+
+# Generated datasets — regenerate via data_generation/
+ml-service/data/
+*.csv.gz
+
+# ==========================================
+# Testing
+# ==========================================
+coverage/
+.coverage
+.pytest_cache/
+.vitest/
+
+# ==========================================
+# Database
+# ==========================================
+*.sqlite
+*.sqlite3
+pgdata/
+
+# ==========================================
+# Editors & OS
+# ==========================================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==========================================
+# Logs
+# ==========================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*

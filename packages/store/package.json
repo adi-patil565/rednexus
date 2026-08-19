@@ -1,0 +1,8 @@
+{
+  "name": "@rednexus/store",
+  "version": "0.1.0",
+  "main": "./src/useUserStore.js",
+  "dependencies": {
+    "zustand": "^4.5.0"
+  }
+}

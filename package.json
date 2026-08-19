@@ -1,0 +1,26 @@
+{
+  "name": "rednexus",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter=!rednexus",
+    "build": "turbo run build --filter=!rednexus",
+    "lint": "turbo run lint --filter=!rednexus"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}
