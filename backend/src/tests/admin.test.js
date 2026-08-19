@@ -36,6 +36,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await prisma.donationRecord.deleteMany({ where: { donorId: REVIEW_DONOR } });
   await prisma.donor.deleteMany({ where: { id: REVIEW_DONOR } });
   await prisma.donor.create({
     data: {
@@ -50,6 +51,19 @@ beforeEach(async () => {
       status: 'PENDING_REVIEW',
       consentAt: new Date(),
       consentPurpose: 'test',
+      // Donor management is now scoped to donors an institution has
+      // actually dealt with, so the fixture needs a real relationship
+      // rather than existing in a vacuum. A donation at MGM is the
+      // simplest one.
+      donations: {
+        create: {
+          institutionId: 'mgm_kamothe',
+          date: new Date('2025-06-01'),
+          screeningStatus: 'RELEASED',
+          bloodGroupVerified: 'AB_NEG',
+          releasedAt: new Date('2025-06-02'),
+        },
+      },
     },
   });
 

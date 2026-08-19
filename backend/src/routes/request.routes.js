@@ -11,6 +11,7 @@ import { BLOOD_GROUP_LABELS, BLOOD_GROUPS } from '@rednexus/types';
 import { prisma } from '../config/prisma.js';
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
 import { verifiedStaff, loadUser } from '../middleware/loadUser.js';
+import { notifyLimiter } from '../middleware/rateLimits.js';
 import {
   detectBreaches,
   confirmRequest,
@@ -212,7 +213,7 @@ router.post('/:id/confirm', async (req, res, next) => {
 });
 
 // POST /api/requests/:id/notify — dispatch the next batch (F4 / F5).
-router.post('/:id/notify', async (req, res, next) => {
+router.post('/:id/notify', notifyLimiter, async (req, res, next) => {
   try {
     const request = await prisma.request.findUnique({ where: { id: req.params.id } });
     if (!request || request.institutionId !== req.user.institutionId) {

@@ -12,6 +12,8 @@ import { computeEligibility, eligibilityMessage } from '../services/eligibility.
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
 import { verifiedStaff } from '../middleware/loadUser.js';
 import { optionalAuth } from '../middleware/optionalAuth.js';
+import { buildDonorScope, findDonorInScope } from '../services/donorScope.service.js';
+import { searchLimiter, registrationLimiter } from '../middleware/rateLimits.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('donor');
@@ -203,8 +205,13 @@ router.get(
   ...verifiedStaff,
   async (req, res, next) => {
     try {
+      // Scoped. Contact details here are legitimate - staff must ring
+      // the donor to review them - but only for donors who actually
+      // came through this institution. A global queue handed every
+      // blood bank every flagged donor's phone number.
+      const scope = await buildDonorScope(prisma, req.user.institutionId);
       const donors = await prisma.donor.findMany({
-        where: { status: 'PENDING_REVIEW' },
+        where: { status: 'PENDING_REVIEW', AND: [scope] },
         orderBy: { createdAt: 'asc' },
       });
 
@@ -241,7 +248,9 @@ router.post(
   ...verifiedStaff,
   async (req, res, next) => {
     try {
-      const donor = await prisma.donor.findUnique({ where: { id: req.params.id } });
+      // H1: previously resolved by id alone, so any verified staff
+      // could clear any donor on the platform.
+      const donor = await findDonorInScope(prisma, req.user.institutionId, req.params.id);
       if (!donor) {
         return res.status(404).json({ error: 'NOT_FOUND', message: 'Donor not found.' });
       }
@@ -300,19 +309,30 @@ router.patch(
     }
 
     try {
-      const donor = await prisma.donor.findUnique({ where: { id: req.params.id } });
+      // H1: same hole as clear-review. A permanent deferral removes a
+      // donor from every future request, so "any staff, any donor" made
+      // one compromised account enough to darken the whole pool.
+      const donor = await findDonorInScope(prisma, req.user.institutionId, req.params.id);
       if (!donor) {
         return res.status(404).json({ error: 'NOT_FOUND', message: 'Donor not found.' });
       }
 
       const data = { ...parsed.data };
-      if (data.deferralType || data.deferralUntilDate) {
+      if (data.deferralType !== undefined || data.deferralUntilDate) {
         data.deferralSetByUserId = req.user.id;
         data.deferralSetAt = new Date();
       }
       if (data.deferralType === 'PERMANENT') {
         data.status = 'PERMANENTLY_DEFERRED';
         data.deferralUntilDate = null;
+      }
+      // Reversal. There was previously no path back from
+      // PERMANENTLY_DEFERRED at all - a mistake, or an abusive call,
+      // was final. Sending deferralType: null lifts it.
+      if (data.deferralType === null) {
+        data.deferralType = null;
+        data.deferralUntilDate = null;
+        if (donor.status === 'PERMANENTLY_DEFERRED') data.status = 'ACTIVE';
       }
 
       const updated = await prisma.donor.update({ where: { id: donor.id }, data });
@@ -336,50 +356,98 @@ router.patch(
  * with contact details on an empty query would turn a lookup tool into
  * a bulk export.
  */
-router.get('/search', verifyFirebaseToken, ...verifiedStaff, async (req, res, next) => {
-  const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
-  const pincode = typeof req.query.pincode === 'string' ? req.query.pincode.trim() : '';
+router.get(
+  '/search',
+  verifyFirebaseToken,
+  ...verifiedStaff,
+  searchLimiter,
+  async (req, res, next) => {
+    const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+    const pincode = typeof req.query.pincode === 'string' ? req.query.pincode.trim() : '';
 
-  if (!phone && !pincode) {
-    return res.status(400).json({
-      error: 'SEARCH_TERM_REQUIRED',
-      message: 'Enter a phone number or PIN code to search.',
-    });
+    if (!phone && !pincode) {
+      return res.status(400).json({
+        error: 'SEARCH_TERM_REQUIRED',
+        message: 'Enter a phone number or PIN code to search.',
+      });
+    }
+
+    try {
+      // Two different searches with two different risk profiles, so
+      // they get two different rules.
+      //
+      // EXACT PHONE is a confirmation, not a discovery: you already
+      // know the number, because the person is standing in front of
+      // you. It cannot enumerate anybody, so it works across the whole
+      // pool - otherwise a walk-in donor who has never used this blood
+      // bank could not be found at all.
+      //
+      // PIN CODE is browsing, and browsing is how a database gets
+      // harvested. It is restricted to donors this institution actually
+      // has a relationship with.
+      const exactPhone = /^[6-9]\d{9}$/.test(phone);
+
+      const where = exactPhone
+        ? { phone }
+        : {
+            ...(pincode ? { areaPincode: pincode } : {}),
+            ...(phone ? { phone: { contains: phone } } : {}),
+            AND: [await buildDonorScope(prisma, req.user.institutionId)],
+          };
+
+      const donors = await prisma.donor.findMany({
+        where,
+        take: 50,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const inScope = exactPhone
+        ? new Set(
+            (
+              await prisma.donor.findMany({
+                where: {
+                  id: { in: donors.map((d) => d.id) },
+                  AND: [await buildDonorScope(prisma, req.user.institutionId)],
+                },
+                select: { id: true },
+              })
+            ).map((d) => d.id)
+          )
+        : new Set(donors.map((d) => d.id));
+
+      return res.json({
+        donors: donors.map((d) => {
+          const eligibility = computeEligibility(d);
+          const known = inScope.has(d.id);
+
+          const base = {
+            id: d.id,
+            bloodGroup: BLOOD_GROUP_LABELS[d.bloodGroupSelfReported],
+            bloodGroupVerified: d.bloodGroupVerified
+              ? BLOOD_GROUP_LABELS[d.bloodGroupVerified]
+              : null,
+            areaPincode: d.areaPincode,
+            status: d.status,
+            eligible: eligibility.eligible,
+            eligibleFrom: eligibility.eligibleFrom,
+            deferralUntilDate: d.deferralUntilDate,
+            // Enough to confirm you have the right person without
+            // handing over a number the caller did not already have.
+            phoneLast4: d.phone.slice(-4),
+            knownToUs: known,
+          };
+
+          // F7: full contact only for donors this institution has
+          // actually dealt with. A stranger's phone number is not
+          // theirs to read, however verified they are.
+          return known ? { ...base, name: d.name, phone: d.phone } : base;
+        }),
+      });
+    } catch (error) {
+      return next(error);
+    }
   }
-
-  try {
-    const donors = await prisma.donor.findMany({
-      where: {
-        ...(phone ? { phone: { contains: phone } } : {}),
-        ...(pincode ? { areaPincode: pincode } : {}),
-      },
-      take: 50,
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return res.json({
-      donors: donors.map((d) => {
-        const eligibility = computeEligibility(d);
-        return {
-          id: d.id,
-          name: d.name,
-          phone: d.phone,
-          bloodGroup: BLOOD_GROUP_LABELS[d.bloodGroupSelfReported],
-          bloodGroupVerified: d.bloodGroupVerified
-            ? BLOOD_GROUP_LABELS[d.bloodGroupVerified]
-            : null,
-          areaPincode: d.areaPincode,
-          status: d.status,
-          eligible: eligibility.eligible,
-          eligibleFrom: eligibility.eligibleFrom,
-          deferralUntilDate: d.deferralUntilDate,
-        };
-      }),
-    });
-  } catch (error) {
-    return next(error);
-  }
-});
+);
 
 /**
  * POST /api/donors - QR camp registration (F1).
@@ -387,7 +455,7 @@ router.get('/search', verifyFirebaseToken, ...verifiedStaff, async (req, res, ne
  * Public by design: the donor scans a QR at a camp and fills the form
  * before any account exists.
  */
-router.post('/', optionalAuth, async (req, res, next) => {
+router.post('/', registrationLimiter, optionalAuth, async (req, res, next) => {
   const parsed = donorRegistrationSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -469,11 +537,13 @@ router.post('/', optionalAuth, async (req, res, next) => {
 /**
  * GET /api/donors/:id - eligibility summary.
  *
- * Returns the non-PII projection only. A staff-authenticated route
- * exposing contact details, scoped to a request the institution raised,
- * arrives with the notification pipeline in Stage 5.
+ * M3: was unauthenticated. UUIDs are not guessable, but donor ids
+ * appear in staff-facing responses, and anyone holding one could read
+ * blood group, PIN code and status without an account. Requires a
+ * signed-in caller now; the projection still carries no contact
+ * details, so a leaked id discloses nothing new.
  */
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', verifyFirebaseToken, async (req, res, next) => {
   try {
     const donor = await prisma.donor.findUnique({ where: { id: req.params.id } });
     if (!donor) {

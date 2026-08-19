@@ -7,7 +7,7 @@ export const INSTITUTION_CATEGORIES = ['IN_HOUSE', 'EXTERNAL'];
 export const donorSignupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(10, 'Use at least 10 characters'),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number (10 digits starting with 6-9)'),
   bloodGroup: z.enum(['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']),
   pincode: z.string().regex(/^\d{6}$/, 'Pincode must be 6 digits'),
@@ -23,7 +23,7 @@ export const donorSignupSchema = z.object({
 export const hospitalSignupSchema = z.object({
   name: z.string().min(2, 'Contact person name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(10, 'Use at least 10 characters'),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
   institutionName: z.string().min(3, 'Blood bank or hospital name is required'),
   category: z.enum(['IN_HOUSE', 'EXTERNAL']),
@@ -35,7 +35,7 @@ export const hospitalSignupSchema = z.object({
 export const adminSignupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(10, 'Use at least 10 characters'),
   phone: z.string().regex(/^[6-9]\d{9}$/, 'Invalid Indian mobile number'),
   adminSecret: z.string().min(4, 'Admin authorization code required'),
 });

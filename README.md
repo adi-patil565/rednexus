@@ -86,15 +86,20 @@ Token verification checks the `aud` claim against the project id, so a
 mismatch makes every real login fail with 401 while forged tokens are
 still correctly rejected — which is a confusing way to find out.
 
-The service account key is gitignored (`*serviceAccount*.json`). Prefer
-keeping it outside the repo and pointing at an absolute path.
+The service account key is gitignored (`*serviceAccount*.json`) and has
+never been committed — but keep it **outside the repository** and point
+`GOOGLE_APPLICATION_CREDENTIALS` at an absolute path. A key inside the
+project directory is one `zip -r` away from leaving with everything else.
+
+In production `WEB_ORIGIN` is required: without it CORS would fall back
+to allowing every origin, so the server refuses to start instead.
 
 ## Commands
 
 | Command | Does |
 |---|---|
 | `npm.cmd run dev` | Backend + web |
-| `npm.cmd test` | 174 backend tests |
+| `npm.cmd test` | 263 backend tests |
 | `npm.cmd run db:migrate` | Apply Prisma migrations |
 | `npm.cmd run db:seed` | 10 Navi Mumbai blood banks, donors, 60 days of usage |
 | `npm.cmd run db:seed:auth` | Firebase logins for the seeded staff |
@@ -116,9 +121,10 @@ keeping it outside the repo and pointing at an absolute path.
 
 ## Status
 
-Phases 0–5 complete. Donor onboarding, eligibility, institution
-verification, daily usage reporting, the threshold engine, and the full
-request pipeline all work end to end with tests.
+Phases 0–8 complete. Donor onboarding, eligibility, institution
+verification and self-registration, daily usage reporting, the threshold
+engine, the full request pipeline, staged escalation, camps and
+recurring patients all work end to end with tests.
 
 The ML track is built and measured. On synthetic data, SARIMA and
 Prophet beat the 28-day rolling average by roughly 4% — not enough to

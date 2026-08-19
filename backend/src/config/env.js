@@ -20,6 +20,11 @@ const envSchema = z.object({
 
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
 
+  // The single origin allowed to call this API in production. Required
+  // there and ignored in development, where localhost ports move around
+  // and the risk is nil.
+  WEB_ORIGIN: z.string().url().optional(),
+
   // Path to the Firebase service account JSON. Optional at startup:
   // the server still boots without it so the health check and
   // unauthenticated routes work, but every authenticated route returns
@@ -40,7 +45,17 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).optional(),
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema
+  .refine(
+    (e) => e.NODE_ENV !== 'production' || Boolean(e.WEB_ORIGIN),
+    {
+      message:
+        'WEB_ORIGIN is required in production - without it CORS would ' +
+        'fall back to allowing every origin.',
+      path: ['WEB_ORIGIN'],
+    }
+  )
+  .safeParse(process.env);
 
 if (!parsed.success) {
   const details = parsed.error.errors

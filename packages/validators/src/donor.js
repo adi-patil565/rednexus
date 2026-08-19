@@ -137,8 +137,14 @@ export const donorStaffUpdateSchema = z.object({
   // Form page 4, "Outcome". The accompanying free-text "Reasons for
   // Deferral" is intentionally absent — sensitive health data with no
   // system behaviour attached. It stays on the paper form.
-  deferralType: z.enum(['TEMPORARY', 'PERMANENT']).optional(),
-  deferralUntilDate: z.coerce.date().optional(),
+  //
+  // Nullable, not merely optional. Explicitly sending null is how a
+  // deferral is LIFTED, and the two are different requests: omitting
+  // the field means "leave it alone", sending null means "remove it".
+  // Without nullable there was no way to express the second, so a
+  // permanent deferral could never be undone.
+  deferralType: z.enum(['TEMPORARY', 'PERMANENT']).nullable().optional(),
+  deferralUntilDate: z.coerce.date().nullable().optional(),
 });
 
 /**

@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import { env, isProduction } from './config/env.js';
 import { moduleLogger } from './lib/logger.js';
+import { globalLimiter } from './middleware/rateLimits.js';
 import { verifyFirebaseToken } from './middleware/authMiddleware.js';
 import donorRoutes from './routes/donor.routes.js';
 import usageRoutes from './routes/usage.routes.js';
@@ -19,8 +22,35 @@ const log = moduleLogger('http');
 const app = express();
 
 
-app.use(cors());
-app.use(express.json());
+// Behind a proxy in production (Render, Railway, Fly). Without this
+// express-rate-limit keys every request to the proxy's address and one
+// abusive client rate-limits everybody.
+if (isProduction) app.set('trust proxy', 1);
+
+// M2: security headers. crossOriginResourcePolicy is relaxed because
+// the API is called from a different origin than it is served from.
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+
+// M1: CORS was wide open - every origin could drive this API with a
+// stolen Bearer token. In production only the configured web origin is
+// allowed; in development localhost is convenient and low-risk.
+app.use(
+  cors({
+    origin: isProduction ? env.WEB_ORIGIN : true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    // No cookies anywhere - auth is a Bearer token - so credentialed
+    // cross-origin requests are refused rather than configured.
+    credentials: false,
+    maxAge: 86400,
+  })
+);
+
+// M4: an explicit ceiling rather than relying on the framework default.
+app.use(express.json({ limit: '100kb' }));
+
+// H3: a broad ceiling. Tighter per-route limits sit on the routers.
+app.use('/api/', globalLimiter);
 
 // ==========================================
 // Health Check Endpoint (Phase 0 requirement)

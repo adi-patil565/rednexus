@@ -33,7 +33,7 @@ const Field = ({ label, hint, error, children }) => (
 
 const FIREBASE_ERRORS = {
   'auth/email-already-in-use': 'That email already has an account. Sign in instead.',
-  'auth/weak-password': 'Use a password of at least 6 characters.',
+  'auth/weak-password': 'Use a longer password - at least 10 characters.',
   'auth/invalid-email': 'That does not look like an email address.',
   'auth/operation-not-allowed':
     'Sign-up is switched off for this project. Enable Email/Password in Firebase.',
@@ -212,7 +212,7 @@ export default function ApplyPage() {
             />
           </Field>
 
-          <Field label="Choose a password" hint="At least 6 characters." error={fieldErrors.password}>
+          <Field label="Choose a password" hint="At least 10 characters." error={fieldErrors.password}>
             <input
               type="password"
               className={inputClass}

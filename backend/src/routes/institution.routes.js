@@ -17,13 +17,14 @@ import { Router } from 'express';
 import { institutionApplySchema } from '@rednexus/validators';
 import { prisma } from '../config/prisma.js';
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
+import { applicationLimiter } from '../middleware/rateLimits.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('institution');
 const router = Router();
 
 // POST /api/institutions/apply
-router.post('/apply', verifyFirebaseToken, async (req, res, next) => {
+router.post('/apply', applicationLimiter, verifyFirebaseToken, async (req, res, next) => {
   const parsed = institutionApplySchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
