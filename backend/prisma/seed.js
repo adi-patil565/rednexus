@@ -303,10 +303,115 @@ async function main() {
     console.log(`  DONOR           ${d.bloodGroupSelfReported.padEnd(7)} ${d.status}`);
   }
 
+  // --- Usage history (T1 feed for the threshold engine) ---------------
+  for (const inst of INSTITUTIONS) {
+    const n = await seedUsageHistory(prisma, inst.slug, inst.dailyUsageUnits, inst.slug.length * 7919);
+    console.log('  USAGE           ' + String(n).padStart(3) + ' records  ' + inst.name);
+  }
+
   console.log(
     `\nDone. ${INSTITUTIONS.length} institutions (${verifiedCount} verified), ` +
       `${INSTITUTIONS.length + 1} users, ${DONORS.length} donors.`
   );
+}
+
+
+// ============================================================
+// Usage history generator
+//
+// The threshold engine needs a daily series per blood group; the single
+// `dailyUsageUnits` scalar in the original Firestore seed cannot feed
+// it. This synthesises 60 days of plausible history so T2/T4 have
+// something real to compute from.
+//
+// Deterministic: a fixed-seed PRNG means re-running produces identical
+// data, so threshold numbers are reproducible across machines.
+//
+// The same generator, extended to ~730 days with annual seasonality,
+// becomes the Prophet/SARIMA training set in Phase 9.
+// ============================================================
+
+const USAGE_DAYS = 60;
+
+// Approximate Indian blood group distribution. Indicative figures -
+// worth checking against a real source before quoting them anywhere.
+const GROUP_SHARE = {
+  O_POS: 0.36, B_POS: 0.31, A_POS: 0.21, AB_POS: 0.07,
+  O_NEG: 0.02, B_NEG: 0.015, A_NEG: 0.01, AB_NEG: 0.005,
+};
+
+// O- is issued well above its population share: it is the universal
+// donor, given in emergencies before a patient's group is known. This
+// is exactly the group a single "Negatives" bucket would have hidden.
+const EMERGENCY_UPLIFT = { O_NEG: 2.5 };
+
+// Hospitals do more elective surgery midweek; Sunday is quiet.
+const WEEKDAY_FACTOR = [0.6, 1.15, 1.1, 1.05, 1.1, 1.05, 0.8]; // Sun..Sat
+
+/** Mulberry32 - small deterministic PRNG. */
+function makeRng(seed) {
+  let a = seed;
+  return function rng() {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+async function seedUsageHistory(prisma, institutionId, dailyUsageUnits, seed) {
+  const rng = makeRng(seed);
+  const rows = [];
+
+  // Stock is carried forward day to day so stockOnHand behaves like a
+  // real shelf: issuance draws it down, collection tops it back up.
+  const stock = {};
+  for (const [g, share] of Object.entries(GROUP_SHARE)) {
+    stock[g] = Math.round(dailyUsageUnits * share * 6);
+  }
+
+  for (let back = USAGE_DAYS - 1; back >= 0; back -= 1) {
+    const date = new Date();
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCDate(date.getUTCDate() - back);
+
+    for (const [group, share] of Object.entries(GROUP_SHARE)) {
+      const base = dailyUsageUnits * share * (EMERGENCY_UPLIFT[group] ?? 1);
+      const seasonal = base * WEEKDAY_FACTOR[date.getUTCDay()];
+
+      // Multiplicative noise, so busy days are proportionally busy -
+      // counts are overdispersed, not normally distributed.
+      const noisy = seasonal * (0.65 + rng() * 0.7);
+
+      // Occasional mass-casualty spike.
+      const shock = rng() < 0.04 ? 1 + rng() * 1.5 : 1;
+
+      const issued = Math.max(0, Math.round(noisy * shock));
+
+      // Collection roughly tracks consumption but arrives lumpily -
+      // the very pattern the product exists to smooth.
+      //
+      // Sized so expected collection matches expected consumption:
+      // it fires on ~35% of days, so the batch is ~2.9x daily usage
+      // (0.35 x 2.9 x 1.0 ~= 1.0). Any larger and stock climbs forever,
+      // no threshold is ever breached, and the safety net is untestable.
+      const collected = rng() < 0.35 ? Math.round(base * 2.9 * (0.5 + rng())) : 0;
+
+      stock[group] = Math.max(0, stock[group] - issued + collected);
+
+      rows.push({
+        institutionId,
+        bloodGroup: group,
+        date,
+        unitsIssued: issued,
+        stockOnHand: stock[group],
+      });
+    }
+  }
+
+  await prisma.usageRecord.deleteMany({ where: { institutionId } });
+  await prisma.usageRecord.createMany({ data: rows, skipDuplicates: true });
+  return rows.length;
 }
 
 main()

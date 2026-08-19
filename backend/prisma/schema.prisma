@@ -107,6 +107,7 @@ model User {
   reviewedDonors       Donor[]          @relation("DonorReviewer")
   recordedDonations    DonationRecord[] @relation("DonationRecorder")
   usageReports         UsageRecord[]    @relation("UsageReporter")
+  confirmedThresholds  BloodGroupThreshold[] @relation("ThresholdConfirmer")
 
   @@index([institutionId])
   @@map("users")
@@ -141,6 +142,7 @@ model Institution {
   staff        User[]
   donations    DonationRecord[]
   usageRecords UsageRecord[]
+  thresholds   BloodGroupThreshold[]
 
   @@index([pincode])
   @@index([verificationStatus])
@@ -323,4 +325,69 @@ model UsageRecord {
   @@unique([institutionId, bloodGroup, date])
   @@index([institutionId, date])
   @@map("usage_records")
+}
+
+// ============================================================
+// BloodGroupThreshold (T2 / T3 / T4) — the core mechanism.
+//
+// The system PROPOSES a minimum stock threshold and a recurring
+// collection target from observed usage. Neither takes effect until a
+// named blood bank staff member confirms it.
+//
+// `confirmedThreshold` being null IS the gate: null means the proposal
+// exists but is not active, and nothing in the codebase may read the
+// proposal as though it were confirmed. Rules section 1 forbids an
+// auto-confirm mode, a bulk-approve shortcut, or any setting that
+// disables this - "not configurable" is the phrase used.
+// ============================================================
+
+model BloodGroupThreshold {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  bloodGroup    BloodGroup
+
+  // --- T2: system proposal, recomputed as usage accumulates ---
+  proposedThreshold       Int
+  proposedCollectionTarget Int
+  meanDailyUsage          Decimal @db.Decimal(8, 2)
+  stdDevDailyUsage        Decimal @db.Decimal(8, 2)
+
+  // Plain-English account of where the numbers came from, shown next to
+  // them in the confirmation UI. PRD section 10 names rubber-stamping as
+  // a top risk: a number with no visible basis is one staff click
+  // through without reading.
+  computationBasis String
+
+  // How much data the proposal rests on. Never blocks - PRD section 10
+  // says never block on missing data - but the UI must show it.
+  daysOfData      Int
+  windowDays      Int
+  confidence      ThresholdConfidence
+
+  // --- T3: the human gate. Null confirmedThreshold = NOT ACTIVE. ---
+  confirmedThreshold        Int?
+  confirmedCollectionTarget Int?
+  confirmedByUserId         String?
+  confirmedBy               User?     @relation("ThresholdConfirmer", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  confirmedAt               DateTime?
+
+  // True when staff changed the number before confirming. Worth
+  // recording: a proposal that is always edited is a proposal whose
+  // formula needs revisiting.
+  wasEdited Boolean @default(false)
+
+  proposedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([institutionId, bloodGroup])
+  @@index([institutionId])
+  @@map("blood_group_thresholds")
+}
+
+enum ThresholdConfidence {
+  LOW    // sparse data — treat the number as a starting point
+  MEDIUM
+  HIGH
 }

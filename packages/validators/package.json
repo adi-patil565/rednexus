@@ -1,6 +1,7 @@
 {
   "name": "@rednexus/validators",
   "version": "0.1.0",
+  "type": "module",
   "main": "./src/index.js",
   "dependencies": {
     "@rednexus/types": "*",

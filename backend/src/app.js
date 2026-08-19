@@ -4,6 +4,7 @@ import { moduleLogger } from './lib/logger.js';
 import { verifyFirebaseToken } from './middleware/authMiddleware.js';
 import donorRoutes from './routes/donor.routes.js';
 import usageRoutes from './routes/usage.routes.js';
+import thresholdRoutes from './routes/threshold.routes.js';
 
 const log = moduleLogger('http');
 
@@ -33,6 +34,7 @@ app.get('/api/health', (req, res) => {
 // ==========================================
 app.use('/api/donors', donorRoutes);
 app.use('/api/usage', usageRoutes);
+app.use('/api/thresholds', thresholdRoutes);
 
 // ==========================================
 // 1. Authentication & Profile APIs (/api/auth)  [MOCK]
