@@ -22,12 +22,15 @@ before anyone deploys a forecasting service.
 From the repo root, in any shell:
 
 ```bash
-npm run ml:compare
+npm.cmd run ml:compare
 ```
 
 ```bash
-npm run ml:test
+npm.cmd run ml:test
 ```
+
+On Windows use `npm.cmd`, not `npm` - PowerShell's execution policy
+blocks `npm.ps1`. On macOS and Linux plain `npm` is fine.
 
 `scripts/ml.js` resolves the virtualenv interpreter for the current
 platform. Running the path directly does not work in PowerShell, which
