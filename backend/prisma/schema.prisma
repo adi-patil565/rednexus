@@ -89,6 +89,40 @@ enum ScreeningStatus {
   DISCARDED
 }
 
+
+// How a request came to exist. All three converge on the same pipeline
+// once a human has approved them.
+enum RequestOrigin {
+  SCHEDULED        // the recurring collection target is off pace (T4)
+  THRESHOLD_BREACH // stock fell to or below a confirmed threshold (T5)
+  MANUAL           // staff raised it directly - a real emergency
+}
+
+// DETECTED exists only for SCHEDULED and THRESHOLD_BREACH. A MANUAL
+// request enters at RAISED because a human already initiated it.
+//
+// DETECTED -> RAISED is the confirmation gate and can never be
+// automated away, however much interaction data the system accumulates
+// (Rules section 1).
+enum RequestState {
+  DETECTED
+  RAISED
+  NOTIFIED
+  ACCEPTED
+  CONFIRMED
+  ARRIVED
+  DONATED
+  CLOSED
+  CANCELLED
+}
+
+enum NotificationResponse {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 enum NotificationChannel {
   PUSH
   SMS
@@ -123,6 +157,7 @@ model User {
   usageReports         UsageRecord[]    @relation("UsageReporter")
   confirmedThresholds  BloodGroupThreshold[] @relation("ThresholdConfirmer")
   screenedDonations    DonationRecord[] @relation("DonationScreener")
+  confirmedRequests    Request[]        @relation("RequestConfirmer")
 
   @@index([institutionId])
   @@map("users")
@@ -158,6 +193,7 @@ model Institution {
   donations    DonationRecord[]
   usageRecords UsageRecord[]
   thresholds   BloodGroupThreshold[]
+  requests     Request[]
 
   @@index([pincode])
   @@index([verificationStatus])
@@ -234,12 +270,22 @@ model Donor {
   // F3 preference basics. Full profile lands in Phase 6.
   preferredChannel NotificationChannel @default(SMS)
 
+  // Pause mode. Absolute: a paused donor is never contacted, however
+  // urgent the request. That is the point of offering it - a pause that
+  // urgency can override is not a pause.
+  notificationsPaused Boolean @default(false)
+
+  // Per-donor override of the platform default contact cap. Null means
+  // use the default.
+  monthlyNotificationCap Int?
+
   registeredAtCampId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  donations DonationRecord[]
+  donations     DonationRecord[]
+  notifications NotificationLog[]
 
   // NOTE: eligibility is NOT a column. It is computed on read from
   // lastDonationDate, gender and deferralUntilDate (Rules section 2).
@@ -420,4 +466,92 @@ enum ThresholdConfidence {
   LOW    // sparse data — treat the number as a starting point
   MEDIUM
   HIGH
+}
+
+
+// ============================================================
+// Request (T5 / F4 / F5) — a confirmed need for blood.
+//
+// Nothing here reaches a donor until state is RAISED, and a system-
+// created request only reaches RAISED through an explicit action by a
+// named BLOOD_BANK_STAFF user at that institution.
+// ============================================================
+
+model Request {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  bloodGroup  BloodGroup
+  unitsNeeded Int
+  urgent      Boolean @default(false)
+
+  origin RequestOrigin
+  state  RequestState  @default(DETECTED)
+
+  // Why the system drafted this, in plain words, shown on the approval
+  // screen. Same purpose as the threshold basis string: an alert with
+  // no visible reason is one staff approve without reading.
+  detectionBasis String?
+
+  // Snapshot at detection time. Kept so the approval screen shows the
+  // numbers that triggered the draft, not numbers that have since moved.
+  stockAtDetection     Int?
+  thresholdAtDetection Int?
+
+  // --- The gate ---
+  confirmedByUserId String?
+  confirmedBy       User?     @relation("RequestConfirmer", fields: [confirmedByUserId], references: [id], onDelete: SetNull)
+  confirmedAt       DateTime?
+
+  // F5 staged escalation: 0 = not yet notified.
+  stageLevel Int @default(0)
+
+  closedAt     DateTime?
+  cancelledAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications NotificationLog[]
+
+  @@index([institutionId, state])
+  @@index([state])
+  @@map("requests")
+}
+
+// ============================================================
+// NotificationLog — one row per donor contacted per request.
+//
+// Also the interaction data the F6 response-scoring model trains on
+// later. Architecture.md says logging should start at Phase 5 rather
+// than waiting for Phase 9, so it starts here.
+// ============================================================
+
+model NotificationLog {
+  id String @id @default(uuid())
+
+  requestId String
+  request   Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  donorId String
+  donor   Donor   @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  channel   NotificationChannel
+  stage     Int
+  sentAt    DateTime @default(now())
+
+  response       NotificationResponse @default(PENDING)
+  respondedAt    DateTime?
+
+  // Ranking score at send time, kept so a later model can be compared
+  // against what the rule-based version actually did.
+  rankScore Decimal? @db.Decimal(6, 3)
+
+  // One notification per donor per request. Re-notifying the same donor
+  // for the same need is the fatigue this product exists to avoid.
+  @@unique([requestId, donorId])
+  @@index([donorId, sentAt])
+  @@map("notification_logs")
 }
