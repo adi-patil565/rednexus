@@ -158,6 +158,7 @@ model User {
   confirmedThresholds  BloodGroupThreshold[] @relation("ThresholdConfirmer")
   screenedDonations    DonationRecord[] @relation("DonationScreener")
   confirmedRequests    Request[]        @relation("RequestConfirmer")
+  createdCamps         Camp[]           @relation("CampCreator")
 
   @@index([institutionId])
   @@map("users")
@@ -194,6 +195,7 @@ model Institution {
   usageRecords UsageRecord[]
   thresholds   BloodGroupThreshold[]
   requests     Request[]
+  camps        Camp[]
 
   @@index([pincode])
   @@index([verificationStatus])
@@ -286,6 +288,7 @@ model Donor {
 
   donations     DonationRecord[]
   notifications NotificationLog[]
+  campAttendances CampAttendance[]
 
   // NOTE: eligibility is NOT a column. It is computed on read from
   // lastDonationDate, gender and deferralUntilDate (Rules section 2).
@@ -554,4 +557,75 @@ model NotificationLog {
   @@unique([requestId, donorId])
   @@index([donorId, sentAt])
   @@map("notification_logs")
+}
+
+
+// ============================================================
+// Camp (F10) — a donation drive a blood bank is running.
+//
+// The listing layer only. N3 (recommending WHERE and WHEN to hold one,
+// driven by T4's collection targets) is Phase 10 and separate.
+//
+// Camps are where donors physically come from: the QR code printed on
+// a camp banner points at /register?camp=<id>, which is why
+// Donor.registeredAtCampId exists. A camp that recruits well is a
+// measurable thing, later.
+// ============================================================
+
+model Camp {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  title    String
+  date     DateTime @db.Date
+  // Free text rather than a time type: "9 AM to 4 PM" and "after
+  // morning rounds" are both things a blood bank actually writes, and
+  // forcing a picker would produce worse data, not better.
+  timeNote String?
+
+  location String
+  pincode  String
+  notes    String?
+
+  // Cancelled rather than deleted. Donors who said they would attend
+  // need to see that it is off, and a deleted row cannot tell them.
+  cancelledAt DateTime?
+
+  createdByUserId String?
+  createdBy       User?   @relation("CampCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attendances CampAttendance[]
+
+  @@index([date])
+  @@index([institutionId, date])
+  @@index([pincode, date])
+  @@map("camps")
+}
+
+// A donor tapping "I'll try to come".
+//
+// Deliberately NOT a commitment, and the wording everywhere says so. A
+// camp attendance that reads as a promise makes people avoid tapping
+// it, and an intention signal nobody gives is worth less than a soft
+// one many do.
+model CampAttendance {
+  id String @id @default(uuid())
+
+  campId String
+  camp   Camp   @relation(fields: [campId], references: [id], onDelete: Cascade)
+
+  donorId String
+  donor   Donor  @relation(fields: [donorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  // One row per donor per camp; tapping again withdraws rather than
+  // stacking duplicates.
+  @@unique([campId, donorId])
+  @@map("camp_attendances")
 }

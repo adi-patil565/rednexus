@@ -17,6 +17,7 @@ import { Spinner, Alert, Button } from '../ui/index.js';
 
 const NAV = [
   { href: '/', label: 'Home' },
+  { href: '/camps', label: 'Camps' },
   { href: '/donations', label: 'My donations' },
   { href: '/preferences', label: 'Settings' },
 ];
