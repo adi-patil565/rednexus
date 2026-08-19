@@ -75,6 +75,20 @@ enum VerificationStatus {
   REJECTED
 }
 
+// Blood is not issuable the moment it leaves the donor's arm. It must
+// pass mandatory TTI screening (HIV, hepatitis B and C, syphilis,
+// malaria - the tests the donor consents to on page 3 of the paper
+// form) before it can be released to the shelf.
+//
+// The app never decides this. RELEASED records that blood bank staff
+// released the unit; it is not the app judging a screening result
+// (Rules section 1: the app never declares medical fitness).
+enum ScreeningStatus {
+  PENDING_SCREENING
+  RELEASED
+  DISCARDED
+}
+
 enum NotificationChannel {
   PUSH
   SMS
@@ -108,6 +122,7 @@ model User {
   recordedDonations    DonationRecord[] @relation("DonationRecorder")
   usageReports         UsageRecord[]    @relation("UsageReporter")
   confirmedThresholds  BloodGroupThreshold[] @relation("ThresholdConfirmer")
+  screenedDonations    DonationRecord[] @relation("DonationScreener")
 
   @@index([institutionId])
   @@map("users")
@@ -259,6 +274,20 @@ model DonationRecord {
   recordedByUserId String?
   recordedBy       User?   @relation("DonationRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
 
+  // --- Screening and release ---
+  //
+  // A donation does not become stock on the day it is given. Counting
+  // it immediately would tell the threshold engine that supply arrived
+  // before it is usable, producing a false "recovered" signal and
+  // suppressing an alert that is still needed.
+  screeningStatus  ScreeningStatus @default(PENDING_SCREENING)
+  releasedAt       DateTime?
+  screenedByUserId String?
+  screenedBy       User?           @relation("DonationScreener", fields: [screenedByUserId], references: [id], onDelete: SetNull)
+
+  // Whole blood: one donation, one unit.
+  unitsContributed Int @default(1)
+
   // Populated from Phase 5 onward when a donation answers a Request.
   requestId String?
 
@@ -266,6 +295,7 @@ model DonationRecord {
 
   @@index([donorId, date])
   @@index([institutionId, date])
+  @@index([institutionId, screeningStatus, releasedAt])
   @@map("donation_records")
 }
 

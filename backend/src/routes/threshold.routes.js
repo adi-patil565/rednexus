@@ -15,6 +15,7 @@ import { prisma } from '../config/prisma.js';
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
 import { verifiedStaff } from '../middleware/loadUser.js';
 import { proposeForInstitution, checkBreach } from '../services/threshold.service.js';
+import { getEffectiveStock, getPendingScreening } from '../services/stock.service.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('threshold');
@@ -137,32 +138,41 @@ router.get('/breaches', async (req, res, next) => {
       where: { institutionId },
     });
 
-    const latest = await prisma.usageRecord.findMany({
-      where: { institutionId },
-      orderBy: { date: 'desc' },
-      distinct: ['bloodGroup'],
-      select: { bloodGroup: true, stockOnHand: true, date: true },
-    });
-    const stockByGroup = new Map(latest.map((r) => [r.bloodGroup, r]));
+    // Effective stock, not just the last count: units released since
+    // that count are really on the shelf. Without them a blood bank
+    // that collected this morning still reads as in breach, and would
+    // ask donors for blood it already has.
+    const stock = await getEffectiveStock(prisma, institutionId);
+    const pending = await getPendingScreening(prisma, institutionId);
 
     const breaches = [];
     const unmonitored = [];
 
     for (const t of thresholds) {
-      const stock = stockByGroup.get(t.bloodGroup);
-      const result = checkBreach(t, stock ? stock.stockOnHand : 0);
+      const s = stock.get(t.bloodGroup);
+      const result = checkBreach(t, s.effective);
 
       if (result === null) {
         unmonitored.push(BLOOD_GROUP_LABELS[t.bloodGroup]);
         continue;
       }
       if (result.inBreach) {
+        const awaiting = pending.get(t.bloodGroup) ?? 0;
         breaches.push({
           bloodGroup: BLOOD_GROUP_LABELS[t.bloodGroup],
           currentStock: result.currentStock,
           confirmedThreshold: result.confirmedThreshold,
           shortfall: result.shortfall,
-          asOf: stock ? stock.date : null,
+          // Kept visible so "53" is explainable as "45 counted on the
+          // 19th, plus 8 released since" rather than an unexplained
+          // number staff cannot reconcile against their own shelf.
+          countedStock: s.counted,
+          countedOn: s.countedOn,
+          releasedSinceCount: s.releasedSince,
+          // Not stock - it cannot be issued yet - but it changes
+          // whether this shortfall is worth contacting donors about.
+          awaitingScreening: awaiting,
+          clearsShortfall: awaiting >= result.shortfall,
         });
       }
     }

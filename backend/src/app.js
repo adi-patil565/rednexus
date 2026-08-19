@@ -6,6 +6,7 @@ import donorRoutes from './routes/donor.routes.js';
 import usageRoutes from './routes/usage.routes.js';
 import thresholdRoutes from './routes/threshold.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import donationRoutes from './routes/donation.routes.js';
 
 const log = moduleLogger('http');
 
@@ -37,6 +38,7 @@ app.use('/api/donors', donorRoutes);
 app.use('/api/usage', usageRoutes);
 app.use('/api/thresholds', thresholdRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/donations', donationRoutes);
 
 // ==========================================
 // 1. Authentication & Profile APIs (/api/auth)  [MOCK]
