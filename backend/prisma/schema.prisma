@@ -106,6 +106,7 @@ model User {
   verifiedInstitutions Institution[]    @relation("InstitutionVerifier")
   reviewedDonors       Donor[]          @relation("DonorReviewer")
   recordedDonations    DonationRecord[] @relation("DonationRecorder")
+  usageReports         UsageRecord[]    @relation("UsageReporter")
 
   @@index([institutionId])
   @@map("users")
@@ -137,8 +138,9 @@ model Institution {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  staff     User[]
-  donations DonationRecord[]
+  staff        User[]
+  donations    DonationRecord[]
+  usageRecords UsageRecord[]
 
   @@index([pincode])
   @@index([verificationStatus])
@@ -263,4 +265,62 @@ model DonationRecord {
   @@index([donorId, date])
   @@index([institutionId, date])
   @@map("donation_records")
+}
+
+// ============================================================
+// UsageRecord (T1) — the platform's primary data feed.
+//
+// One row per institution, per blood group, per day. Reported daily by
+// the blood bank, since the blood bank is the party actually issuing
+// units and holds the real record.
+//
+// This is the most critical dependency in the product: the rolling
+// average (T2), the threshold, and the recurring collection target (T4)
+// are all derived from these rows. PRD section 10 names reporting
+// consistency as the top risk, which is why the entry screen has to
+// stay under a minute - if it takes longer, staff stop doing it and the
+// whole mechanism quietly breaks.
+// ============================================================
+
+model UsageRecord {
+  id String @id @default(uuid())
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  bloodGroup BloodGroup
+  date       DateTime   @db.Date
+
+  // Units dispensed to patients on this date.
+  unitsIssued Int
+
+  // Units on the shelf at close of day.
+  //
+  // Architecture.md section 6 models UsageRecord with unitsIssued only,
+  // but T5 breach detection compares CURRENT STOCK against the confirmed
+  // threshold - and nothing in the spec held current stock. Capturing it
+  // alongside issuance keeps that a single daily form rather than two,
+  // which matters given the sub-minute constraint above.
+  stockOnHand Int
+
+  // Optional component-level detail, carried over from the shape the
+  // existing /api/blood-bank/stock mock already used. Null is fine:
+  // whole-blood units are what the threshold engine actually needs.
+  prbcUnits      Int?
+  ffpUnits       Int?
+  plateletUnits  Int?
+
+  reportedByUserId String?
+  reportedBy       User?   @relation("UsageReporter", fields: [reportedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One row per group per day. A correction re-reports the same day,
+  // which upserts rather than creating a duplicate - important because
+  // the entry screen shows the last 7 days specifically so yesterday's
+  // typo is easy to catch and fix.
+  @@unique([institutionId, bloodGroup, date])
+  @@index([institutionId, date])
+  @@map("usage_records")
 }
