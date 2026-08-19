@@ -47,16 +47,55 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setFirebaseUser(user);
-      if (user) {
-        await loadProfile();
-      } else {
-        setProfile(null);
-      }
+    let settled = false;
+
+    // Firebase resolves the initial auth state by reading its
+    // persistence layer (IndexedDB). That read can stall indefinitely -
+    // private browsing, blocked storage, some embedded webviews - and
+    // when it does, onAuthStateChanged simply never fires.
+    //
+    // Without a bound, the whole app sits on a spinner forever with no
+    // explanation and no way out. Treat a stalled initialisation as
+    // "signed out, and say so" rather than as "wait".
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setFirebaseUser(null);
+      setProfile(null);
+      setError('Could not start the sign-in service. Try reloading the page.');
       setIsLoading(false);
-    });
-    return () => unsubscribe();
+    }, 5000);
+
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (user) => {
+        settled = true;
+        clearTimeout(timeout);
+        setFirebaseUser(user);
+        if (user) {
+          await loadProfile();
+        } else {
+          setProfile(null);
+          setError(null);
+        }
+        setIsLoading(false);
+      },
+      (err) => {
+        // The error callback most people forget to pass. Without it an
+        // initialisation failure is silent.
+        settled = true;
+        clearTimeout(timeout);
+        setFirebaseUser(null);
+        setProfile(null);
+        setError(err?.message ?? 'Sign-in service unavailable.');
+        setIsLoading(false);
+      }
+    );
+
+    return () => {
+      clearTimeout(timeout);
+      unsubscribe();
+    };
   }, [loadProfile]);
 
   const logout = useCallback(async () => {
