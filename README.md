@@ -14,6 +14,13 @@ service layer (`dispatch` refuses an unapproved request), and in the
 state machine (`DETECTED → NOTIFIED` is not a legal transition). There
 is no bulk-approve endpoint and no auto-confirm setting.
 
+## Continuing this project
+
+**Read [`docs/HANDOFF.md`](docs/HANDOFF.md) first.** It carries the
+architecture decision, what is and is not built, the non-negotiable
+product rules, every environment gotcha that has cost time, and the
+open decisions.
+
 ## Windows: use `npm.cmd`, not `npm`
 
 PowerShell's execution policy blocks `npm.ps1`, so every plain `npm`
