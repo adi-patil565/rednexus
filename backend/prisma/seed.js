@@ -5,8 +5,8 @@
 // account - never with an auto-confirm flag or a bypass. This file is
 // that seed data.
 //
-// Institutions are migrated from firestore-seed/seed.js (10 real Navi
-// Mumbai blood banks) with two deliberate changes:
+// Institutions were migrated from the original Firestore seed (10 real
+// Navi Mumbai blood banks) with two deliberate changes:
 //
 //   1. The `Negatives` stock bucket is split into A-, B-, O- and AB-.
 //      Per-blood-group thresholds are the entire product; O- cannot
