@@ -17,11 +17,29 @@ blood demand. What the comparison can honestly settle is whether the
 28-day rolling average is already good enough, which is worth knowing
 before anyone deploys a forecasting service.
 
-## Run the comparison
+## Run it
+
+From the repo root, in any shell:
 
 ```bash
-.venv/Scripts/python.exe run_comparison.py
+npm run ml:compare
 ```
+
+```bash
+npm run ml:test
+```
+
+`scripts/ml.js` resolves the virtualenv interpreter for the current
+platform. Running the path directly does not work in PowerShell, which
+has no `&&`, or in cmd.exe, which reads forward slashes as switches.
+
+## First-time setup
+
+```bash
+python -m venv ml-service/.venv
+```
+
+Then install into it with the `requirements.txt` in this directory.
 
 ## Layout
 
