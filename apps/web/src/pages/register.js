@@ -21,7 +21,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useMutation } from '@tanstack/react-query';
-import { registerDonor, toFormError } from '@rednexus/api';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, registerDonor, toFormError } from '@rednexus/api';
 import { BLOOD_GROUPS, BLOOD_GROUP_LABELS } from '@rednexus/types';
 import { Card, Button, Alert } from '../components/ui/index.js';
 
@@ -46,6 +47,8 @@ export default function RegisterPage() {
     gender: '',
     dateOfBirth: '',
     phone: '',
+    email: '',
+    password: '',
     areaPincode: '',
     bloodGroupSelfReported: '',
     donatedBefore: false,
@@ -67,16 +70,39 @@ export default function RegisterPage() {
   };
 
   const submit = useMutation({
-    mutationFn: () =>
-      registerDonor({
+    mutationFn: async () => {
+      // Create the sign-in account FIRST, then register. The API links
+      // the donor record to whoever is signed in, and without that a
+      // donor could register and then never sign in to see the alerts
+      // they registered to receive.
+      //
+      // If account creation fails (email already used, weak password)
+      // nothing is written on either side.
+      await createUserWithEmailAndPassword(auth, form.email.trim(), form.password);
+
+      return registerDonor({
         ...form,
         priorDonationCount: form.priorDonationCount === '' ? undefined : form.priorDonationCount,
         lastDonationDate: form.lastDonationDate === '' ? undefined : form.lastDonationDate,
         patientName: form.patientName || undefined,
         registeredAtCampId: campId,
-      }),
+      });
+    },
     onSuccess: (data) => setDone(data),
     onError: (e) => {
+      // Firebase errors carry a `code`; API errors carry a response.
+      const FIREBASE = {
+        'auth/email-already-in-use':
+          'That email already has an account. Sign in instead.',
+        'auth/weak-password': 'Use a password of at least 6 characters.',
+        'auth/invalid-email': 'That does not look like an email address.',
+        'auth/operation-not-allowed':
+          'Sign-up is switched off for this project. Enable Email/Password in Firebase.',
+      };
+      if (e?.code && FIREBASE[e.code]) {
+        setBanner(FIREBASE[e.code]);
+        return;
+      }
       const err = toFormError(e);
       setFieldErrors(err.fields);
       setBanner(err.message);
@@ -91,8 +117,8 @@ export default function RegisterPage() {
           <h2 className="mb-md text-lg font-semibold">Thank you for registering</h2>
           <p className="text-sm">{done.message}</p>
           <div className="mt-lg">
-            <Link href="/login">
-              <Button>Sign in</Button>
+            <Link href="/">
+              <Button>Go to my home page</Button>
             </Link>
           </div>
         </Card>
@@ -160,6 +186,32 @@ export default function RegisterPage() {
               className={inputClass}
               value={form.phone}
               onChange={(e) => set('phone', e.target.value)}
+            />
+          </Field>
+
+          <Field
+            label="Email"
+            hint="You will use this to sign in and see requests."
+            error={fieldErrors.email}
+          >
+            <input
+              type="email"
+              className={inputClass}
+              value={form.email}
+              onChange={(e) => set('email', e.target.value)}
+            />
+          </Field>
+
+          <Field
+            label="Choose a password"
+            hint="At least 6 characters."
+            error={fieldErrors.password}
+          >
+            <input
+              type="password"
+              className={inputClass}
+              value={form.password}
+              onChange={(e) => set('password', e.target.value)}
             />
           </Field>
 

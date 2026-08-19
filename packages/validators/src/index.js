@@ -5,3 +5,4 @@ export * from './usage.js';
 export * from './donation.js';
 export * from './camp.js';
 export * from './recurring.js';
+export * from './institution.js';

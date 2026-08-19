@@ -40,7 +40,7 @@ export default function DonorShell({ children, title }) {
         <h1 className="mb-lg text-center text-xxl font-bold text-primary">Raktasetu</h1>
         <Alert tone="info" title="Please sign in">
           Sign in to see if blood of your group is needed nearby.
-          <div className="mt-md flex gap-md">
+          <div className="mt-md flex flex-wrap gap-md">
             <Link href="/login">
               <Button>Sign in</Button>
             </Link>
@@ -48,6 +48,12 @@ export default function DonorShell({ children, title }) {
               <Button variant="secondary">Register as a donor</Button>
             </Link>
           </div>
+          <p className="mt-md text-xs text-ink-muted">
+            Run a blood bank?{' '}
+            <Link className="font-semibold text-primary underline" href="/apply">
+              Register it here
+            </Link>
+          </p>
         </Alert>
       </div>
     );
@@ -83,10 +89,16 @@ export default function DonorShell({ children, title }) {
             </>
           ) : (
             <>
-              This account is not registered as a donor yet.{' '}
-              <Link className="font-semibold text-primary underline" href="/register">
-                Register
-              </Link>
+              This account is not registered yet. Are you a donor, or a blood
+              bank?
+              <div className="mt-md flex flex-wrap gap-md">
+                <Link href="/register">
+                  <Button>Register as a donor</Button>
+                </Link>
+                <Link href="/apply">
+                  <Button variant="secondary">Register a blood bank</Button>
+                </Link>
+              </div>
             </>
           )}
           <div className="mt-md">

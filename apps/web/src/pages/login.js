@@ -16,6 +16,7 @@
 // because choosing was the vulnerability.
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@rednexus/api';
@@ -112,9 +113,20 @@ export default function LoginPage() {
           </form>
         </Card>
 
-        <p className="mt-lg text-center text-xs text-ink-muted">
-          Blood bank staff accounts are created by a platform administrator.
-        </p>
+        <div className="mt-lg text-center text-xs text-ink-muted">
+          <p>
+            New donor?{' '}
+            <Link className="font-semibold text-primary underline" href="/register">
+              Register here
+            </Link>
+          </p>
+          <p className="mt-xs">
+            Registering a blood bank?{' '}
+            <Link className="font-semibold text-primary underline" href="/apply">
+              Apply here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ export * from './client.js';
 export * from './admin.js';
 export * from './camp.js';
 export * from './recurring.js';
+export * from './institution.js';
 export * from './donor.js';
 export * from './notification.js';
 export * from './threshold.js';

@@ -11,6 +11,7 @@ import { prisma } from '../config/prisma.js';
 import { computeEligibility, eligibilityMessage } from '../services/eligibility.service.js';
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
 import { verifiedStaff } from '../middleware/loadUser.js';
+import { optionalAuth } from '../middleware/optionalAuth.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('donor');
@@ -386,7 +387,7 @@ router.get('/search', verifyFirebaseToken, ...verifiedStaff, async (req, res, ne
  * Public by design: the donor scans a QR at a camp and fills the form
  * before any account exists.
  */
-router.post('/', async (req, res, next) => {
+router.post('/', optionalAuth, async (req, res, next) => {
   const parsed = donorRegistrationSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -410,8 +411,23 @@ router.post('/', async (req, res, next) => {
     : DONOR_STATUS.PROVISIONAL;
 
   try {
+    // Link the record to the account that just registered, if there is
+    // one. Without this a donor can register and then never sign in to
+    // see the alerts they registered to receive - which was true until
+    // this line existed.
+    if (req.firebaseUid) {
+      const taken = await prisma.donor.findUnique({ where: { firebaseUid: req.firebaseUid } });
+      if (taken) {
+        return res.status(409).json({
+          error: 'ALREADY_REGISTERED',
+          message: 'This account is already registered as a donor.',
+        });
+      }
+    }
+
     const donor = await prisma.donor.create({
       data: {
+        firebaseUid: req.firebaseUid ?? null,
         name: input.name,
         gender: input.gender,
         dateOfBirth: input.dateOfBirth,
