@@ -27,7 +27,7 @@ import DashboardShell from '../../components/layout/DashboardShell.js';
 import { Card, Button, Alert, Spinner, Badge } from '../../components/ui/index.js';
 
 const inputClass =
-  'w-full rounded-md border border-black/15 px-sm py-xs focus:border-primary focus:outline-none';
+  'w-full rounded-md border border-rule px-sm py-xs focus:border-blood focus:outline-none';
 
 const FREQUENCIES = [
   ['WEEKLY', 'Every week'],
@@ -78,7 +78,7 @@ function NewScheduleForm({ onDone }) {
       <h3 className="mb-md font-semibold">Add a recurring patient</h3>
 
       <div className="grid gap-md sm:grid-cols-2">
-        <label className="text-sm sm:col-span-2">
+        <label className="text-small sm:col-span-2">
           <span className="mb-xs block font-medium">Patient file number</span>
           <input
             className={inputClass}
@@ -88,16 +88,16 @@ function NewScheduleForm({ onDone }) {
           />
           {/* Said plainly, because it is a deliberate choice and staff
               will wonder why the field is not "patient name". */}
-          <span className="mt-xs block text-xs text-ink-muted">
+          <span className="mt-xs block text-tiny text-ink-muted">
             Use your own reference. Do not enter the patient&rsquo;s name — this
             system never needs to know who they are.
           </span>
           {fieldErrors.patientRef && (
-            <span className="text-sm text-danger">{fieldErrors.patientRef}</span>
+            <span className="text-small text-blood">{fieldErrors.patientRef}</span>
           )}
         </label>
 
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Blood group</span>
           <select
             className={inputClass}
@@ -112,7 +112,7 @@ function NewScheduleForm({ onDone }) {
           </select>
         </label>
 
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Units each time</span>
           <input
             type="number"
@@ -123,7 +123,7 @@ function NewScheduleForm({ onDone }) {
           />
         </label>
 
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">How often</span>
           <select
             className={inputClass}
@@ -138,7 +138,7 @@ function NewScheduleForm({ onDone }) {
           </select>
         </label>
 
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Next transfusion</span>
           <input
             type="date"
@@ -147,11 +147,11 @@ function NewScheduleForm({ onDone }) {
             onChange={(e) => set('nextDueDate', e.target.value)}
           />
           {fieldErrors.nextDueDate && (
-            <span className="text-sm text-danger">{fieldErrors.nextDueDate}</span>
+            <span className="text-small text-blood">{fieldErrors.nextDueDate}</span>
           )}
         </label>
 
-        <label className="text-sm sm:col-span-2">
+        <label className="text-small sm:col-span-2">
           <span className="mb-xs block font-medium">Start arranging donors this many days before</span>
           <input
             type="number"
@@ -161,7 +161,7 @@ function NewScheduleForm({ onDone }) {
             value={form.leadDays}
             onChange={(e) => set('leadDays', e.target.value)}
           />
-          <span className="mt-xs block text-xs text-ink-muted">
+          <span className="mt-xs block text-tiny text-ink-muted">
             About a week works well. Much earlier and donors forget; much later
             and there is no time to ask more people.
           </span>
@@ -177,7 +177,7 @@ function NewScheduleForm({ onDone }) {
         </Button>
       </div>
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -201,12 +201,12 @@ function ScheduleCard({ schedule, onDone }) {
   const days = schedule.daysUntilDue;
 
   return (
-    <Card className={`mb-md ${c.atRisk ? 'border-l-4 border-l-danger' : ''}`}>
+    <Card className={`mb-md ${c.atRisk ? 'border-l-4 border-l-blood' : ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div>
-          <p className="font-mono text-sm font-semibold">{schedule.patientRef}</p>
-          <p className="mt-xs text-sm text-ink-muted">
-            <strong className="text-primary">{schedule.bloodGroup}</strong> ·{' '}
+          <p className="font-mono text-small font-semibold">{schedule.patientRef}</p>
+          <p className="mt-xs text-small text-ink-muted">
+            <strong className="text-blood">{schedule.bloodGroup}</strong> ·{' '}
             {schedule.unitsPerVisit} {schedule.unitsPerVisit === 1 ? 'unit' : 'units'} ·{' '}
             {schedule.frequencyLabel.toLowerCase()}
           </p>
@@ -224,12 +224,12 @@ function ScheduleCard({ schedule, onDone }) {
           ) : (
             <Badge tone="neutral">In {days} days</Badge>
           )}
-          <p className="mt-xs text-xs text-ink-muted">{formatDate(schedule.nextDueDate)}</p>
+          <p className="mt-xs text-tiny text-ink-muted">{formatDate(schedule.nextDueDate)}</p>
         </div>
       </div>
 
       {schedule.active && (
-        <div className="mt-md rounded-md bg-canvas p-md text-sm">
+        <div className="mt-md rounded-md bg-paper p-md text-small">
           {!c.arranged ? (
             <span className="text-ink-muted">
               Donors will be arranged {schedule.leadDays} days before — that is{' '}
@@ -239,11 +239,11 @@ function ScheduleCard({ schedule, onDone }) {
               .
             </span>
           ) : c.covered ? (
-            <span className="text-success">
+            <span className="text-positive">
               {c.accepted} of {c.needed} donors have agreed. Covered.
             </span>
           ) : (
-            <span className={c.atRisk ? 'text-danger' : 'text-ink-muted'}>
+            <span className={c.atRisk ? 'text-blood' : 'text-ink-muted'}>
               {c.accepted} of {c.needed} donors have agreed.{' '}
               {c.atRisk
                 ? `Only ${c.daysRemaining} ${c.daysRemaining === 1 ? 'day' : 'days'} left — contact more people.`
@@ -264,7 +264,7 @@ function ScheduleCard({ schedule, onDone }) {
         </div>
       )}
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -300,7 +300,7 @@ export default function PatientsPage() {
   return (
     <DashboardShell
       title="Recurring patients"
-      subtitle="Patients who need blood on a regular schedule, so donors can be arranged in advance."
+      standfirst="Patients who need blood on a regular schedule, so donors can be arranged in advance."
     >
       {notice && (
         <div className="mb-lg">
@@ -333,10 +333,10 @@ export default function PatientsPage() {
       {data && (
         <>
           <section className="mb-xl">
-            <h2 className="mb-md text-lg font-semibold">Active ({active.length})</h2>
+            <h2 className="mb-md text-h4 font-semibold">Active ({active.length})</h2>
             {active.length === 0 ? (
               <Card>
-                <p className="text-sm text-ink-muted">
+                <p className="text-small text-ink-muted">
                   No recurring patients yet. Add one and donors will be arranged
                   automatically before each transfusion.
                 </p>
@@ -348,7 +348,7 @@ export default function PatientsPage() {
 
           {stopped.length > 0 && (
             <section>
-              <h2 className="mb-md text-lg font-semibold">Stopped ({stopped.length})</h2>
+              <h2 className="mb-md text-h4 font-semibold">Stopped ({stopped.length})</h2>
               {stopped.map((s) => (
                 <ScheduleCard key={s.id} schedule={s} onDone={refresh} />
               ))}

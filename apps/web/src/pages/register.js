@@ -28,15 +28,15 @@ import { Card, Button, Alert } from '../components/ui/index.js';
 
 const Field = ({ label, hint, error, children }) => (
   <label className="mb-lg block">
-    <span className="mb-xs block text-sm font-medium">{label}</span>
-    {hint && <span className="mb-xs block text-xs text-ink-muted">{hint}</span>}
+    <span className="mb-xs block text-small font-medium">{label}</span>
+    {hint && <span className="mb-xs block text-tiny text-ink-muted">{hint}</span>}
     {children}
-    {error && <span className="mt-xs block text-sm text-danger">{error}</span>}
+    {error && <span className="mt-xs block text-small text-blood">{error}</span>}
   </label>
 );
 
 const inputClass =
-  'w-full rounded-md border border-black/15 px-sm py-sm focus:border-primary focus:outline-none';
+  'w-full rounded-md border border-rule px-sm py-sm focus:border-blood focus:outline-none';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -112,10 +112,10 @@ export default function RegisterPage() {
   if (done) {
     return (
       <div className="mx-auto max-w-md p-xl">
-        <h1 className="mb-lg text-center text-xxl font-bold text-primary">Raktasetu</h1>
+        <h1 className="mb-lg text-center text-h3 font-bold text-blood">Raktasetu</h1>
         <Card>
-          <h2 className="mb-md text-lg font-semibold">Thank you for registering</h2>
-          <p className="text-sm">{done.message}</p>
+          <h2 className="mb-md text-h4 font-semibold">Thank you for registering</h2>
+          <p className="text-small">{done.message}</p>
           <div className="mt-lg">
             <Link href="/">
               <Button>Go to my home page</Button>
@@ -128,8 +128,8 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-md px-lg py-xl">
-      <h1 className="mb-xs text-center text-xxl font-bold text-primary">Raktasetu</h1>
-      <p className="mb-lg text-center text-sm text-ink-muted">Register as a blood donor</p>
+      <h1 className="mb-xs text-center text-h3 font-bold text-blood">Raktasetu</h1>
+      <p className="mb-lg text-center text-small text-ink-muted">Register as a blood donor</p>
 
       {banner && (
         <div className="mb-lg">
@@ -250,7 +250,7 @@ export default function RegisterPage() {
           <Field label="Have you donated blood before?">
             <div className="flex gap-lg">
               {[['Yes', true], ['No', false]].map(([label, value]) => (
-                <label key={label} className="flex items-center gap-sm text-sm">
+                <label key={label} className="flex items-center gap-sm text-small">
                   <input
                     type="radio"
                     name="donatedBefore"
@@ -291,7 +291,7 @@ export default function RegisterPage() {
             <div className="flex gap-lg">
               {[['No, for anyone who needs it', 'VOLUNTARY'], ['Yes, for someone I know', 'REPLACEMENT']].map(
                 ([label, value]) => (
-                  <label key={value} className="flex items-center gap-sm text-sm">
+                  <label key={value} className="flex items-center gap-sm text-small">
                     <input
                       type="radio"
                       name="donationType"
@@ -323,7 +323,7 @@ export default function RegisterPage() {
           >
             <div className="flex gap-lg">
               {[['Yes', true], ['No', false]].map(([label, value]) => (
-                <label key={label} className="flex items-center gap-sm text-sm">
+                <label key={label} className="flex items-center gap-sm text-small">
                   <input
                     type="radio"
                     name="advisedNotToDonate"
@@ -336,8 +336,8 @@ export default function RegisterPage() {
             </div>
           </Field>
 
-          <div className="mb-lg rounded-md bg-canvas p-md">
-            <label className="flex items-start gap-sm text-sm">
+          <div className="mb-lg rounded-md bg-paper p-md">
+            <label className="flex items-start gap-sm text-small">
               <input
                 type="checkbox"
                 className="mt-1"
@@ -354,11 +354,11 @@ export default function RegisterPage() {
               </span>
             </label>
             {fieldErrors.consentGiven && (
-              <p className="mt-xs text-sm text-danger">{fieldErrors.consentGiven}</p>
+              <p className="mt-xs text-small text-blood">{fieldErrors.consentGiven}</p>
             )}
 
             {/* Consent clause (e) - a choice, not an assumption. */}
-            <label className="mt-md flex items-start gap-sm text-sm">
+            <label className="mt-md flex items-start gap-sm text-small">
               <input
                 type="checkbox"
                 className="mt-1"
@@ -378,7 +378,7 @@ export default function RegisterPage() {
         </form>
       </Card>
 
-      <p className="mt-lg text-center text-xs text-ink-muted">
+      <p className="mt-lg text-center text-tiny text-ink-muted">
         Your phone number is shared only with a blood bank you agree to donate
         for. It is never shown to patients or their families.
       </p>

@@ -41,7 +41,7 @@ export default function PreferencesPage() {
 
       <Card className="mb-lg">
         <h2 className="mb-sm font-semibold">Requests for blood</h2>
-        <p className="mb-md text-sm text-ink-muted">
+        <p className="mb-md text-small text-ink-muted">
           {paused
             ? 'You are not being contacted at the moment.'
             : 'We contact you when blood of your group is needed nearby. Never more than twice a month.'}
@@ -57,7 +57,7 @@ export default function PreferencesPage() {
 
       <Card>
         <h2 className="mb-sm font-semibold">How we contact you</h2>
-        <p className="mb-md text-sm text-ink-muted">
+        <p className="mb-md text-small text-ink-muted">
           Choose what works best on your phone.
         </p>
         <div className="flex flex-wrap gap-md">
@@ -67,7 +67,7 @@ export default function PreferencesPage() {
             ['IVR', 'Phone call'],
             ['EMAIL', 'Email'],
           ].map(([value, label]) => (
-            <label key={value} className="flex items-center gap-sm text-sm">
+            <label key={value} className="flex items-center gap-sm text-small">
               <input
                 type="radio"
                 checked={profile?.preferredChannel === value}

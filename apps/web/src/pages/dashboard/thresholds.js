@@ -1,47 +1,46 @@
 'use client';
 
-// Threshold confirmation (T3) — the most important screen in the product.
+// Threshold confirmation — the most important screen in the product.
 //
-// PRD section 10 names the failure mode precisely: "Human confirmation
-// must never become a rubber-stamp bottleneck. If confirming a
-// threshold or alert is slow or confusing, staff will stop doing it
-// carefully, which defeats the purpose of the human-in-the-loop design."
+// PRD section 10 names the failure mode: "Human confirmation must never
+// become a rubber-stamp bottleneck. If confirming a threshold or alert
+// is slow or confusing, staff will stop doing it carefully, which
+// defeats the purpose of the human-in-the-loop design."
 //
-// Three decisions follow from that, and all three are deliberate:
+// The design answer is to make the REASONING the largest thing on the
+// row, not the button. Each blood group is a ruled editorial entry: the
+// group in display serif, the basis sentence set as body copy at full
+// measure, and the controls last. You read past the evidence to reach
+// the control.
 //
-//   1. NO "confirm all" button. Not an oversight - the API has no such
-//      endpoint either. One button approving eight numbers is exactly
-//      how a gate becomes a formality (Rules section 1).
-//
-//   2. The basis sentence is shown next to every number, not hidden
-//      behind a tooltip or an expander. "Average 19.6 units/day over 28
-//      days" is what makes approving a judgement instead of a reflex.
-//
-//   3. The number is an editable input, pre-filled with the proposal.
-//      The proposal is advice. If it looks wrong to the person who
-//      actually runs the blood bank, theirs wins, and the API records
-//      that it was edited.
+// There is deliberately no "confirm all". Not an omission — the API has
+// no bulk endpoint either. One button approving eight numbers is how a
+// gate becomes a formality.
 
 import React, { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getThresholds, confirmThreshold, toFormError } from '@rednexus/api';
 import DashboardShell from '../../components/layout/DashboardShell.js';
-import { Card, Button, Alert, Spinner, Badge } from '../../components/ui/index.js';
+import {
+  Panel,
+  Section,
+  Note,
+  Spinner,
+  Badge,
+  Button,
+  Label,
+  BloodGroup,
+} from '../../components/ui/index.js';
 
-const CONFIDENCE_TONE = { HIGH: 'success', MEDIUM: 'warning', LOW: 'danger' };
-const CONFIDENCE_TEXT = {
-  HIGH: 'Based on plenty of data',
-  MEDIUM: 'Based on some data',
-  LOW: 'Based on very little data — check this carefully',
+const CONFIDENCE = {
+  HIGH: { tone: 'success', text: 'Plenty of data' },
+  MEDIUM: { tone: 'warning', text: 'Some data' },
+  LOW: { tone: 'danger', text: 'Very little data — check carefully' },
 };
 
 function ThresholdRow({ item, onConfirmed }) {
-  const proposed = item.proposed;
-  const active = item.active;
-
-  const [threshold, setThreshold] = useState(
-    String(active?.threshold ?? proposed.threshold)
-  );
+  const { proposed, active } = item;
+  const [threshold, setThreshold] = useState(String(active?.threshold ?? proposed.threshold));
   const [target, setTarget] = useState(
     String(active?.weeklyCollectionTarget ?? proposed.weeklyCollectionTarget)
   );
@@ -64,90 +63,95 @@ function ThresholdRow({ item, onConfirmed }) {
     Number(threshold) !== proposed.threshold ||
     Number(target) !== proposed.weeklyCollectionTarget;
 
+  const conf = CONFIDENCE[proposed.confidence];
+
   return (
-    <Card className="mb-md">
-      <div className="flex flex-wrap items-start justify-between gap-md">
-        <div className="flex items-baseline gap-md">
-          <span className="text-xxl font-bold text-primary">{item.bloodGroup}</span>
-          {active ? (
-            <Badge tone="success">Active</Badge>
-          ) : (
-            <Badge tone="warning">Not confirmed</Badge>
+    <article className="rule-top py-xl">
+      <div className="grid gap-lg md:grid-cols-swiss">
+        {/* --- Identity --- */}
+        <header className="md:col-span-2">
+          <BloodGroup size="lg">{item.bloodGroup}</BloodGroup>
+          <div className="mt-md">
+            {active ? <Badge tone="success">Active</Badge> : <Badge tone="warning">Not set</Badge>}
+          </div>
+        </header>
+
+        {/* --- The evidence, given the most space --- */}
+        <div className="md:col-span-6">
+          <Label className="block">Why this number</Label>
+          <p className="mt-sm max-w-measure text-base leading-relaxed text-ink">
+            {proposed.basis}
+          </p>
+
+          <div className="mt-lg flex flex-wrap items-center gap-md">
+            <Badge tone={conf.tone}>{conf.text}</Badge>
+            <span className="font-mono text-tiny text-ink-faint">
+              {proposed.meanDailyUsage}/day average
+            </span>
+          </div>
+
+          {active && (
+            <p className="mt-md text-tiny text-ink-faint">
+              Confirmed by {active.confirmedBy ?? 'a staff member'} on{' '}
+              {new Date(active.confirmedAt).toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+              {active.wasEdited && ' · adjusted from the suggestion'}
+            </p>
           )}
-          <Badge tone={CONFIDENCE_TONE[proposed.confidence]}>
-            {CONFIDENCE_TEXT[proposed.confidence]}
-          </Badge>
         </div>
 
-        {active && (
-          <p className="text-xs text-ink-muted">
-            Confirmed by {active.confirmedBy ?? 'a staff member'} on{' '}
-            {new Date(active.confirmedAt).toLocaleDateString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
-            {active.wasEdited && ' · adjusted from the suggestion'}
-          </p>
-        )}
-      </div>
+        {/* --- The controls, last --- */}
+        <div className="md:col-span-4">
+          <div className="grid grid-cols-2 gap-md">
+            <label className="block">
+              <Label className="mb-xs block">Hold at least</Label>
+              <input
+                type="number"
+                min="0"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                className="field-num"
+              />
+              <span className="mt-xs block text-tiny text-ink-faint">
+                units · suggested {proposed.threshold}
+              </span>
+            </label>
 
-      {/* The basis. Shown, never hidden — this is what stops the
-          approve button from becoming a reflex. */}
-      <p className="mt-md rounded-md bg-canvas p-md text-sm text-ink-muted">
-        {proposed.basis}
-      </p>
-
-      <div className="mt-md flex flex-wrap items-end gap-lg">
-        <label className="text-sm">
-          <span className="mb-xs block font-medium">Minimum stock to hold</span>
-          <div className="flex items-center gap-sm">
-            <input
-              type="number"
-              min="0"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              className="w-24 rounded-md border border-black/15 px-sm py-xs text-right focus:border-primary focus:outline-none"
-            />
-            <span className="text-xs text-ink-muted">
-              units (suggested {proposed.threshold})
-            </span>
+            <label className="block">
+              <Label className="mb-xs block">Collect weekly</Label>
+              <input
+                type="number"
+                min="0"
+                value={target}
+                onChange={(e) => setTarget(e.target.value)}
+                className="field-num"
+              />
+              <span className="mt-xs block text-tiny text-ink-faint">
+                units · suggested {proposed.weeklyCollectionTarget}
+              </span>
+            </label>
           </div>
-        </label>
 
-        <label className="text-sm">
-          <span className="mb-xs block font-medium">Collect each week</span>
-          <div className="flex items-center gap-sm">
-            <input
-              type="number"
-              min="0"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              className="w-24 rounded-md border border-black/15 px-sm py-xs text-right focus:border-primary focus:outline-none"
-            />
-            <span className="text-xs text-ink-muted">
-              units (suggested {proposed.weeklyCollectionTarget})
-            </span>
-          </div>
-        </label>
+          <Button
+            className="mt-lg w-full"
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending}
+          >
+            {mutation.isPending ? 'Saving…' : active ? 'Update' : `Confirm ${item.bloodGroup}`}
+          </Button>
 
-        <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-          {mutation.isPending
-            ? 'Saving…'
-            : active
-              ? 'Update'
-              : `Confirm ${item.bloodGroup}`}
-        </Button>
-
-        {edited && (
-          <span className="text-xs text-secondary">
-            You changed the suggestion — that will be recorded.
-          </span>
-        )}
+          {edited && (
+            <p className="mt-sm text-tiny text-blood">
+              You changed the suggestion — that will be recorded.
+            </p>
+          )}
+          {error && <p className="mt-sm text-tiny text-blood">{error}</p>}
+        </div>
       </div>
-
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
-    </Card>
+    </article>
   );
 }
 
@@ -165,49 +169,51 @@ export default function ThresholdsPage() {
 
   return (
     <DashboardShell
-      title="Thresholds and collection targets"
-      subtitle="Suggested from your reported usage. Nothing takes effect until you confirm it."
+      title="Minimums and targets"
+      standfirst="Worked out from the units you have reported issuing. Nothing takes effect until you confirm it, and you can change any number first."
+      aside={
+        <Note tone="info" title="Each group on its own">
+          Blood groups are confirmed one at a time, on purpose. A single button
+          approving eight numbers is a button nobody reads.
+        </Note>
+      }
     >
       {isLoading && <Spinner label="Working out suggestions from your usage" />}
-      {isError && <Alert tone="danger">Could not load thresholds.</Alert>}
+      {isError && <Note tone="danger">Could not load thresholds.</Note>}
 
       {data && (
         <>
-          <div className="mb-lg">
-            <Alert tone="info" title="How this works">
-              These numbers are suggestions worked out from the units you have
-              reported issuing. They do nothing until you confirm them, and you
-              can change any number before you do. Each blood group is confirmed
-              on its own.
-            </Alert>
-          </div>
-
           {pending.length > 0 && (
-            <section className="mb-xl">
-              <h2 className="mb-md text-lg font-semibold">
-                Waiting for you ({pending.length})
-              </h2>
-              {pending.map((item) => (
-                <ThresholdRow key={item.bloodGroupValue} item={item} onConfirmed={refresh} />
-              ))}
-            </section>
+            <Section index={1} title="Waiting for you" aside={`${pending.length} groups`}>
+              <div>
+                {pending.map((item) => (
+                  <ThresholdRow key={item.bloodGroupValue} item={item} onConfirmed={refresh} />
+                ))}
+              </div>
+            </Section>
           )}
 
           {confirmed.length > 0 && (
-            <section>
-              <h2 className="mb-md text-lg font-semibold">
-                Active ({confirmed.length})
-              </h2>
-              {confirmed.map((item) => (
-                <ThresholdRow key={item.bloodGroupValue} item={item} onConfirmed={refresh} />
-              ))}
-            </section>
+            <Section
+              index={pending.length > 0 ? 2 : 1}
+              title="Active"
+              aside={`${confirmed.length} groups`}
+              className="mt-3xl"
+            >
+              <div>
+                {confirmed.map((item) => (
+                  <ThresholdRow key={item.bloodGroupValue} item={item} onConfirmed={refresh} />
+                ))}
+              </div>
+            </Section>
           )}
 
           {pending.length === 0 && confirmed.length === 0 && (
-            <Alert tone="info">
-              No suggestions yet. Report a few days of usage first.
-            </Alert>
+            <Panel>
+              <p className="text-base text-ink-muted">
+                No suggestions yet. Report a few days of usage first.
+              </p>
+            </Panel>
           )}
         </>
       )}

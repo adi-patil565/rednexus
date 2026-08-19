@@ -95,7 +95,7 @@ export default function DonorCampsPage() {
 
       {camps.data && list.length === 0 && (
         <Card>
-          <p className="text-sm text-ink-muted">
+          <p className="text-small text-ink-muted">
             {nearbyOnly
               ? 'No camps in your area right now. Try "Everywhere" to see others.'
               : 'No camps coming up right now. We will show them here when there are.'}
@@ -111,8 +111,8 @@ export default function DonorCampsPage() {
           <Card key={camp.id} className="mb-md">
             <div className="flex flex-wrap items-start justify-between gap-sm">
               <div>
-                <p className="text-lg font-semibold">{camp.title}</p>
-                <p className="text-sm text-ink-muted">{camp.bloodBank}</p>
+                <p className="text-h4 font-semibold">{camp.title}</p>
+                <p className="text-small text-ink-muted">{camp.bloodBank}</p>
               </div>
               {days === 0 ? (
                 <Badge tone="danger">Today</Badge>
@@ -123,12 +123,12 @@ export default function DonorCampsPage() {
               )}
             </div>
 
-            <p className="mt-md text-sm">
+            <p className="mt-md text-small">
               <strong>{formatDate(camp.date)}</strong>
               {camp.timeNote ? `, ${camp.timeNote}` : ''}
             </p>
-            <p className="text-sm text-ink-muted">{camp.location}</p>
-            {camp.notes && <p className="mt-xs text-sm text-ink-muted">{camp.notes}</p>}
+            <p className="text-small text-ink-muted">{camp.location}</p>
+            {camp.notes && <p className="mt-xs text-small text-ink-muted">{camp.notes}</p>}
 
             {isAuthenticated && profile?.kind === 'DONOR' && (
               <div className="mt-md flex flex-wrap items-center gap-md">
@@ -140,7 +140,7 @@ export default function DonorCampsPage() {
                   {going ? 'Change my mind' : "I'll try to come"}
                 </Button>
                 {going && (
-                  <span className="text-sm text-success">
+                  <span className="text-small text-positive">
                     You said you hope to come.
                   </span>
                 )}
@@ -148,7 +148,7 @@ export default function DonorCampsPage() {
             )}
 
             {camp.interestedCount > 0 && (
-              <p className="mt-sm text-xs text-ink-muted">
+              <p className="mt-sm text-tiny text-ink-muted">
                 {camp.interestedCount}{' '}
                 {camp.interestedCount === 1 ? 'person hopes' : 'people hope'} to come
               </p>
@@ -157,7 +157,7 @@ export default function DonorCampsPage() {
         );
       })}
 
-      <p className="mt-lg text-xs text-ink-muted">
+      <p className="mt-lg text-tiny text-ink-muted">
         Saying you will try to come is not a commitment. Turn up if you can,
         and nothing happens if you cannot.
       </p>

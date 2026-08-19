@@ -45,14 +45,14 @@ export default function HistoryPage() {
   return (
     <DashboardShell
       title="History"
-      subtitle="Every threshold and every alert your blood bank has approved, and who approved it."
+      standfirst="Every threshold and every alert your blood bank has approved, and who approved it."
     >
       {isLoading && <Spinner label="Loading history" />}
       {isError && <Alert tone="danger">Could not load history.</Alert>}
 
       {data && entries.length === 0 && (
         <Card>
-          <p className="text-sm text-ink-muted">
+          <p className="text-small text-ink-muted">
             Nothing confirmed yet. Thresholds you approve and alerts you send
             will be recorded here.
           </p>
@@ -68,21 +68,21 @@ export default function HistoryPage() {
                   {entry.kind === 'THRESHOLD' ? 'Threshold' : 'Alert'}
                 </Badge>
                 {entry.origin && (
-                  <span className="text-xs text-ink-muted">{ORIGIN_LABEL[entry.origin]}</span>
+                  <span className="text-tiny text-ink-muted">{ORIGIN_LABEL[entry.origin]}</span>
                 )}
                 {entry.adjusted && (
                   <Badge tone="warning">Changed from the suggestion</Badge>
                 )}
               </div>
 
-              <p className="mt-sm text-sm">{entry.summary}</p>
+              <p className="mt-sm text-small">{entry.summary}</p>
 
               {entry.basis && (
-                <p className="mt-xs text-xs text-ink-muted">{entry.basis}</p>
+                <p className="mt-xs text-tiny text-ink-muted">{entry.basis}</p>
               )}
             </div>
 
-            <div className="text-right text-xs text-ink-muted">
+            <div className="text-right text-tiny text-ink-muted">
               <p className="font-medium text-ink">{entry.by}</p>
               <p>{formatWhen(entry.at)}</p>
             </div>
@@ -91,7 +91,7 @@ export default function HistoryPage() {
       ))}
 
       {entries.length > 0 && (
-        <p className="mt-lg text-xs text-ink-muted">
+        <p className="mt-lg text-tiny text-ink-muted">
           This record cannot be edited or deleted. It exists so the decisions
           made in your blood bank&rsquo;s name can always be traced to the person
           who made them.

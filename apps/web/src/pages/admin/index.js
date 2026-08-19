@@ -49,13 +49,13 @@ function InstitutionCard({ institution, onDone }) {
     <Card className="mb-md">
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div>
-          <p className="text-lg font-semibold">{institution.name}</p>
-          <p className="text-sm text-ink-muted">
+          <p className="text-h4 font-semibold">{institution.name}</p>
+          <p className="text-small text-ink-muted">
             {institution.category === 'IN_HOUSE'
               ? `Inside ${institution.linkedHospitalName ?? 'a hospital'}`
               : 'Standalone, serves several hospitals'}
           </p>
-          <p className="mt-xs text-sm text-ink-muted">
+          <p className="mt-xs text-small text-ink-muted">
             {institution.address ?? `PIN ${institution.pincode}`}
           </p>
         </div>
@@ -64,14 +64,14 @@ function InstitutionCard({ institution, onDone }) {
         </Badge>
       </div>
 
-      <p className="mt-md text-sm">
+      <p className="mt-md text-small">
         {hasStaff ? (
           <>
             {institution.staffCount} staff{' '}
             {institution.staffCount === 1 ? 'account' : 'accounts'}
           </>
         ) : (
-          <span className="text-danger">No staff account yet</span>
+          <span className="text-blood">No staff account yet</span>
         )}
       </p>
 
@@ -86,7 +86,7 @@ function InstitutionCard({ institution, onDone }) {
       )}
 
       {institution.verifiedAt && (
-        <p className="mt-sm text-xs text-ink-muted">
+        <p className="mt-sm text-tiny text-ink-muted">
           {institution.verificationStatus === 'VERIFIED' ? 'Verified' : 'Reviewed'} by{' '}
           {institution.verifiedBy ?? 'an administrator'} on{' '}
           {new Date(institution.verifiedAt).toLocaleDateString('en-IN', {
@@ -112,7 +112,7 @@ function InstitutionCard({ institution, onDone }) {
         </div>
       )}
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -169,14 +169,14 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-black/10 bg-surface">
+      <header className="border-b border-rule bg-raised">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-lg py-md">
           <div>
-            <p className="text-lg font-bold text-primary">Raktasetu</p>
-            <p className="text-xs text-ink-muted">Platform administration</p>
+            <p className="text-h4 font-bold text-blood">Raktasetu</p>
+            <p className="text-tiny text-ink-muted">Platform administration</p>
           </div>
           <div className="flex items-center gap-md">
-            <span className="text-sm text-ink-muted">{profile.name}</span>
+            <span className="text-small text-ink-muted">{profile.name}</span>
             <Button variant="ghost" onClick={logout}>Sign out</Button>
           </div>
         </div>
@@ -192,8 +192,8 @@ export default function AdminPage() {
               ['Usage reports', stats.data.usageRecords],
             ].map(([label, value]) => (
               <Card key={label}>
-                <p className="text-xxl font-bold text-primary">{value}</p>
-                <p className="text-xs text-ink-muted">{label}</p>
+                <p className="text-h3 font-bold text-blood">{value}</p>
+                <p className="text-tiny text-ink-muted">{label}</p>
               </Card>
             ))}
           </div>
@@ -203,12 +203,12 @@ export default function AdminPage() {
         {institutions.isError && <Alert tone="danger">Could not load blood banks.</Alert>}
 
         <section className="mb-xl">
-          <h2 className="mb-md text-lg font-semibold">
+          <h2 className="mb-md text-h4 font-semibold">
             Waiting for review ({awaiting.length})
           </h2>
           {awaiting.length === 0 ? (
             <Card>
-              <p className="text-sm text-ink-muted">Nothing waiting.</p>
+              <p className="text-small text-ink-muted">Nothing waiting.</p>
             </Card>
           ) : (
             awaiting.map((i) => (
@@ -219,7 +219,7 @@ export default function AdminPage() {
 
         {decided.length > 0 && (
           <section>
-            <h2 className="mb-md text-lg font-semibold">
+            <h2 className="mb-md text-h4 font-semibold">
               Reviewed ({decided.length})
             </h2>
             {decided.map((i) => (

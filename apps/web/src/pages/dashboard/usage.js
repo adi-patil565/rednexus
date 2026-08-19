@@ -119,7 +119,7 @@ export default function UsageEntryPage() {
   return (
     <DashboardShell
       title="Daily usage"
-      subtitle="Units issued today and what is left on the shelf. Takes under a minute."
+      standfirst="Units issued today and what is left on the shelf. Takes under a minute."
     >
       {banner && (
         <div className="mb-lg">
@@ -130,28 +130,28 @@ export default function UsageEntryPage() {
       <form onSubmit={submit}>
         <Card>
           <div className="mb-lg flex flex-wrap items-end justify-between gap-md">
-            <label className="text-sm">
+            <label className="text-small">
               <span className="mb-xs block font-medium">Date</span>
               <input
                 type="date"
                 value={date}
                 max={today()}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-md border border-black/15 px-sm py-xs"
+                className="rounded-md border border-rule px-sm py-xs"
               />
-              <span className="ml-sm text-xs text-ink-muted">
+              <span className="ml-sm text-tiny text-ink-muted">
                 Missed a day? Pick it here and fill it in.
               </span>
             </label>
-            <p className="text-sm text-ink-muted">
+            <p className="text-small text-ink-muted">
               {filled.length} of {BLOOD_GROUPS.length} filled
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
+            <table className="w-full min-w-[520px] text-small">
               <thead>
-                <tr className="border-b border-black/10 text-left text-xs uppercase tracking-wide text-ink-muted">
+                <tr className="border-b border-rule text-left text-tiny uppercase tracking-wide text-ink-muted">
                   <th className="pb-sm">Blood group</th>
                   <th className="pb-sm">Units issued today</th>
                   <th className="pb-sm">Units left in stock</th>
@@ -174,7 +174,7 @@ export default function UsageEntryPage() {
                           onChange={(e) => setCell(g, field, e.target.value)}
                           onKeyDown={(e) => onKeyDown(e, i, field)}
                           placeholder="0"
-                          className="w-24 rounded-md border border-black/15 px-sm py-xs text-right focus:border-primary focus:outline-none"
+                          className="w-24 rounded-md border border-rule px-sm py-xs text-right focus:border-blood focus:outline-none"
                         />
                       </td>
                     ))}
@@ -188,13 +188,13 @@ export default function UsageEntryPage() {
             <Button type="submit" disabled={mutation.isPending}>
               {mutation.isPending ? 'Saving…' : 'Save today’s usage'}
             </Button>
-            <span className="text-xs text-ink-muted">
+            <span className="text-tiny text-ink-muted">
               Saving again for the same date replaces that day’s numbers.
             </span>
           </div>
 
           {Object.keys(errors).length > 0 && (
-            <ul className="mt-md list-disc pl-lg text-sm text-danger">
+            <ul className="mt-md list-disc pl-lg text-small text-blood">
               {Object.entries(errors).map(([k, v]) => (
                 <li key={k}>{v}</li>
               ))}
@@ -204,7 +204,7 @@ export default function UsageEntryPage() {
       </form>
 
       <section className="mt-xl">
-        <h2 className="mb-md text-lg font-semibold">Last 7 days</h2>
+        <h2 className="mb-md text-h4 font-semibold">Last 7 days</h2>
         {history.isLoading && <Spinner label="Loading recent reports" />}
         {history.isError && <Alert tone="danger">Could not load recent reports.</Alert>}
 
@@ -221,9 +221,9 @@ export default function UsageEntryPage() {
             )}
 
             <Card className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
+              <table className="w-full min-w-[640px] text-small">
                 <thead>
-                  <tr className="border-b border-black/10 text-left text-xs uppercase tracking-wide text-ink-muted">
+                  <tr className="border-b border-rule text-left text-tiny uppercase tracking-wide text-ink-muted">
                     <th className="pb-sm">Date</th>
                     {history.data.bloodGroups.map((label) => (
                       <th key={label} className="pb-sm text-right">
@@ -250,7 +250,7 @@ export default function UsageEntryPage() {
                 </tbody>
               </table>
               {history.data.history.length === 0 && (
-                <p className="py-md text-sm text-ink-muted">
+                <p className="py-md text-small text-ink-muted">
                   Nothing reported yet. Today’s entry will appear here.
                 </p>
               )}

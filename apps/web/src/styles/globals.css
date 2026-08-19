@@ -2,18 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ==================================================================
+   BASE
+   ================================================================== */
+
 :root {
   color-scheme: light;
 }
 
-body {
-  @apply bg-canvas text-ink antialiased;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+html {
+  /* Swiss layouts depend on vertical rhythm holding across the page. */
+  -webkit-text-size-adjust: 100%;
 }
 
-/* Usage entry is a daily, eight-field task. Number inputs get spinner
-   arrows that make tabbing through them slower, so they are removed -
-   PRD section 10 puts a sub-minute budget on that screen. */
+body {
+  @apply bg-paper text-ink;
+  font-family: theme('fontFamily.sans');
+  font-size: 15px;
+  line-height: 1.6;
+  font-feature-settings: 'kern' 1, 'liga' 1, 'cv05' 1;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers must align in columns. Every figure in this product is
+   compared against another figure - units against a threshold, stock
+   against a target - and proportional digits make that comparison
+   physically harder to read. */
+.tabular,
+table,
+.font-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: theme('colors.blood.DEFAULT');
+  color: #fff;
+}
+
+/* A visible, unfussy focus ring. Clinical software gets used by
+   keyboard far more than consumer software does. */
+:focus-visible {
+  outline: 2px solid theme('colors.blood.DEFAULT');
+  outline-offset: 2px;
+}
+
+/* The daily usage screen is eight rows of two numeric fields. Spinner
+   arrows make tabbing through it measurably slower, and PRD section 10
+   puts a sub-minute budget on that screen. */
 input[type='number']::-webkit-outer-spin-button,
 input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -21,4 +56,92 @@ input[type='number']::-webkit-inner-spin-button {
 }
 input[type='number'] {
   -moz-appearance: textfield;
+}
+
+/* ==================================================================
+   COMPONENTS
+   ================================================================== */
+
+@layer components {
+  /* ---- The label -------------------------------------------------
+     The single most characteristic element here. Uppercase, tracked,
+     monospaced, small. It is how Swiss information design marks a
+     field, and how a lab report marks a value. Used everywhere a piece
+     of data needs naming. */
+  .label {
+    @apply font-mono text-micro uppercase tracking-label text-ink-muted;
+  }
+  .label-ink {
+    @apply font-mono text-micro uppercase tracking-label text-ink;
+  }
+
+  /* ---- Rules -----------------------------------------------------
+     Structure comes from hairlines, not from boxes or shadows. A page
+     of bordered cards reads as an admin panel; a page organised by
+     rules reads as a printed document. */
+  .rule-top {
+    @apply border-t border-hair border-rule;
+  }
+  .rule-bottom {
+    @apply border-b border-hair border-rule;
+  }
+
+  /* ---- Panel -----------------------------------------------------
+     The card replacement. Ruled, square, flat. */
+  .panel {
+    @apply border border-hair border-rule bg-raised;
+  }
+
+  /* ---- Display figure --------------------------------------------
+     A large number is the editorial device this product needs most:
+     a threshold, a shortfall, a count of days. Serif, because a
+     grotesque at 64px reads as a dashboard widget and a serif reads as
+     a statistic worth attending to. */
+  .figure {
+    @apply font-display text-display leading-none tabular;
+  }
+
+  /* ---- Section index ----------------------------------------------
+     Numbered sections. Straight from the Swiss playbook, and genuinely
+     useful on screens where staff are following a sequence. */
+  .index {
+    @apply font-mono text-micro tabular text-ink-faint;
+  }
+
+  /* ---- Inputs ------------------------------------------------------
+     Underlined rather than boxed. Boxes stack into visual noise on a
+     form with sixteen fields; a baseline keeps the grid legible. */
+  .field {
+    @apply w-full border-0 border-b border-hair border-rule-strong bg-transparent
+           px-0 py-sm text-base text-ink
+           focus:border-blood focus:outline-none focus:ring-0;
+  }
+  .field-num {
+    @apply field text-right font-mono tabular;
+  }
+  select.field {
+    @apply pr-lg;
+  }
+}
+
+/* ==================================================================
+   MOTION
+   Restrained. This is an instrument, not a toy - and a blood bank
+   clerk sees these screens forty times a day.
+   ================================================================== */
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: rise 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }

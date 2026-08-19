@@ -54,10 +54,10 @@ function ReviewRow({ donor, onDone }) {
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div>
           <p className="font-semibold">{donor.name}</p>
-          <p className="text-sm text-ink-muted">
+          <p className="text-small text-ink-muted">
             {donor.phone} · {donor.bloodGroup} · PIN {donor.areaPincode}
           </p>
-          <p className="mt-xs text-xs text-ink-muted">
+          <p className="mt-xs text-tiny text-ink-muted">
             Registered{' '}
             {new Date(donor.registeredAt).toLocaleDateString('en-IN', {
               day: 'numeric',
@@ -70,7 +70,7 @@ function ReviewRow({ donor, onDone }) {
         <Badge tone="warning">Waiting for review</Badge>
       </div>
 
-      <p className="mt-md rounded-md bg-canvas p-md text-sm text-ink-muted">
+      <p className="mt-md rounded-md bg-paper p-md text-small text-ink-muted">
         This person said someone has advised them not to donate. Speak to them
         before deciding. The app did not ask why and holds no medical details.
       </p>
@@ -84,7 +84,7 @@ function ReviewRow({ donor, onDone }) {
         </Button>
       </div>
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -101,17 +101,17 @@ function DeferralControl({ donor, onDone }) {
 
   return (
     <div className="mt-md border-t border-black/5 pt-md">
-      <p className="mb-sm text-xs font-medium uppercase tracking-wide text-ink-muted">
+      <p className="mb-sm text-tiny font-medium uppercase tracking-wide text-ink-muted">
         Record a deferral
       </p>
       <div className="flex flex-wrap items-end gap-md">
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block">Cannot donate until</span>
           <input
             type="date"
             value={until}
             onChange={(e) => setUntil(e.target.value)}
-            className="rounded-md border border-black/15 px-sm py-xs"
+            className="rounded-md border border-rule px-sm py-xs"
           />
         </label>
         <Button
@@ -129,11 +129,11 @@ function DeferralControl({ donor, onDone }) {
           Permanent
         </Button>
       </div>
-      <p className="mt-xs text-xs text-ink-muted">
+      <p className="mt-xs text-tiny text-ink-muted">
         This date overrides the usual gap between donations. The reason stays on
         the paper form.
       </p>
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </div>
   );
 }
@@ -161,10 +161,10 @@ export default function DonorManagementPage() {
   return (
     <DashboardShell
       title="Donors"
-      subtitle="Review people held after registration, and record deferrals."
+      standfirst="Review people held after registration, and record deferrals."
     >
       <section className="mb-xl">
-        <h2 className="mb-md text-lg font-semibold">
+        <h2 className="mb-md text-h4 font-semibold">
           Waiting for review ({queue.data?.donors.length ?? 0})
         </h2>
 
@@ -174,7 +174,7 @@ export default function DonorManagementPage() {
         {queue.data &&
           (queue.data.donors.length === 0 ? (
             <Card>
-              <p className="text-sm text-ink-muted">
+              <p className="text-small text-ink-muted">
                 Nobody is waiting. People appear here when they say someone has
                 advised them not to donate.
               </p>
@@ -187,7 +187,7 @@ export default function DonorManagementPage() {
       </section>
 
       <section>
-        <h2 className="mb-md text-lg font-semibold">Find a donor</h2>
+        <h2 className="mb-md text-h4 font-semibold">Find a donor</h2>
 
         <Card className="mb-md">
           <form
@@ -197,27 +197,27 @@ export default function DonorManagementPage() {
               if (canSearch) setSubmitted({ ...term });
             }}
           >
-            <label className="text-sm">
+            <label className="text-small">
               <span className="mb-xs block font-medium">Phone number</span>
               <input
                 value={term.phone}
                 onChange={(e) => setTerm({ ...term, phone: e.target.value })}
-                className="rounded-md border border-black/15 px-sm py-xs"
+                className="rounded-md border border-rule px-sm py-xs"
               />
             </label>
-            <label className="text-sm">
+            <label className="text-small">
               <span className="mb-xs block font-medium">or PIN code</span>
               <input
                 value={term.pincode}
                 onChange={(e) => setTerm({ ...term, pincode: e.target.value })}
-                className="rounded-md border border-black/15 px-sm py-xs"
+                className="rounded-md border border-rule px-sm py-xs"
               />
             </label>
             <Button type="submit" disabled={!canSearch}>
               Search
             </Button>
           </form>
-          <p className="mt-sm text-xs text-ink-muted">
+          <p className="mt-sm text-tiny text-ink-muted">
             Enter a phone number or PIN code. There is no way to list every donor.
           </p>
         </Card>
@@ -228,7 +228,7 @@ export default function DonorManagementPage() {
         {results.data &&
           (results.data.donors.length === 0 ? (
             <Card>
-              <p className="text-sm text-ink-muted">Nobody matched that search.</p>
+              <p className="text-small text-ink-muted">Nobody matched that search.</p>
             </Card>
           ) : (
             results.data.donors.map((d) => (
@@ -236,11 +236,11 @@ export default function DonorManagementPage() {
                 <div className="flex flex-wrap items-start justify-between gap-md">
                   <div>
                     <p className="font-semibold">{d.name}</p>
-                    <p className="text-sm text-ink-muted">
+                    <p className="text-small text-ink-muted">
                       {d.phone} · PIN {d.areaPincode}
                     </p>
-                    <p className="mt-xs text-sm">
-                      <strong className="text-primary">
+                    <p className="mt-xs text-small">
+                      <strong className="text-blood">
                         {d.bloodGroupVerified ?? d.bloodGroup}
                       </strong>{' '}
                       {d.bloodGroupVerified ? '(tested)' : '(as told to us)'}
@@ -248,7 +248,7 @@ export default function DonorManagementPage() {
                   </div>
                   <div className="text-right">
                     <Badge tone={STATUS_TONE[d.status]}>{d.status.replace(/_/g, ' ')}</Badge>
-                    <p className="mt-xs text-xs text-ink-muted">
+                    <p className="mt-xs text-tiny text-ink-muted">
                       {d.eligible
                         ? 'Can donate now'
                         : d.eligibleFrom

@@ -90,43 +90,43 @@ function DraftCard({ item, onDone }) {
   });
 
   return (
-    <Card className="mb-md border-l-4 border-l-warning">
+    <Card className="mb-md border-l-4 border-l-caution">
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div className="flex items-baseline gap-md">
-          <span className="text-xxl font-bold text-primary">{item.bloodGroup}</span>
+          <span className="text-h3 font-bold text-blood">{item.bloodGroup}</span>
           <Badge tone="warning">Waiting for your approval</Badge>
           {item.urgent && <Badge tone="danger">Urgent</Badge>}
         </div>
-        <span className="text-xs text-ink-muted">{ORIGIN_LABEL[item.origin]}</span>
+        <span className="text-tiny text-ink-muted">{ORIGIN_LABEL[item.origin]}</span>
       </div>
 
       {/* Why the system drafted this. Shown in full, never truncated:
           an alert with no visible reason is one that gets approved
           without being read. */}
-      <p className="mt-md rounded-md bg-canvas p-md text-sm text-ink-muted">
+      <p className="mt-md rounded-md bg-paper p-md text-small text-ink-muted">
         {item.basis}
       </p>
 
       {item.stockAtDetection != null && (
-        <p className="mt-sm text-xs text-ink-muted">
+        <p className="mt-sm text-tiny text-ink-muted">
           At the time this was drafted: {item.stockAtDetection} units in stock,
           minimum {item.thresholdAtDetection}.
         </p>
       )}
 
       <div className="mt-md flex flex-wrap items-end gap-lg">
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Units to ask for</span>
           <input
             type="number"
             min="1"
             value={units}
             onChange={(e) => setUnits(e.target.value)}
-            className="w-24 rounded-md border border-black/15 px-sm py-xs text-right focus:border-primary focus:outline-none"
+            className="w-24 rounded-md border border-rule px-sm py-xs text-right focus:border-blood focus:outline-none"
           />
         </label>
 
-        <label className="flex items-center gap-sm text-sm">
+        <label className="flex items-center gap-sm text-small">
           <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} />
           Mark urgent
         </label>
@@ -140,11 +140,11 @@ function DraftCard({ item, onDone }) {
         </Button>
       </div>
 
-      <p className="mt-sm text-xs text-ink-muted">
+      <p className="mt-sm text-tiny text-ink-muted">
         Approving does not contact anyone yet — you choose when to send.
       </p>
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -173,20 +173,20 @@ function ActiveCard({ item, onDone }) {
     <Card className="mb-md">
       <div className="flex flex-wrap items-start justify-between gap-md">
         <div className="flex items-baseline gap-md">
-          <span className="text-xl font-bold text-primary">{item.bloodGroup}</span>
-          <span className="text-sm text-ink-muted">{item.unitsNeeded} units</span>
+          <span className="text-h4 font-bold text-blood">{item.bloodGroup}</span>
+          <span className="text-small text-ink-muted">{item.unitsNeeded} units</span>
           <Badge tone={STATE_TONE[item.state]}>{STATE_LABEL[item.state]}</Badge>
           {item.urgent && <Badge tone="danger">Urgent</Badge>}
         </div>
         <Link
           href={`/dashboard/requests/${item.id}`}
-          className="text-sm font-semibold text-primary underline"
+          className="text-small font-semibold text-blood underline"
         >
           View details
         </Link>
       </div>
 
-      <p className="mt-sm text-xs text-ink-muted">
+      <p className="mt-sm text-tiny text-ink-muted">
         Approved by {item.confirmedBy ?? 'staff'}
         {item.confirmedAt &&
           ` on ${new Date(item.confirmedAt).toLocaleDateString('en-IN', {
@@ -212,13 +212,13 @@ function ActiveCard({ item, onDone }) {
       </div>
 
       {item.stageLevel > 0 && (
-        <p className="mt-sm text-xs text-ink-muted">
+        <p className="mt-sm text-tiny text-ink-muted">
           Round {item.stageLevel}. Contacting more widens the pool — no one
           already asked is contacted again.
         </p>
       )}
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -263,18 +263,18 @@ function ManualRequestForm({ onDone }) {
   return (
     <Card>
       <h3 className="mb-md font-semibold">Raise a request</h3>
-      <p className="mb-md text-sm text-ink-muted">
+      <p className="mb-md text-small text-ink-muted">
         For an emergency the system has not picked up. This is approved the
         moment you raise it, because you are raising it.
       </p>
 
       <div className="flex flex-wrap items-end gap-md">
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Blood group</span>
           <select
             value={form.bloodGroup}
             onChange={(e) => setForm({ ...form, bloodGroup: e.target.value })}
-            className="rounded-md border border-black/15 px-sm py-xs"
+            className="rounded-md border border-rule px-sm py-xs"
           >
             {BLOOD_GROUPS.map((g) => (
               <option key={g} value={g}>
@@ -284,18 +284,18 @@ function ManualRequestForm({ onDone }) {
           </select>
         </label>
 
-        <label className="text-sm">
+        <label className="text-small">
           <span className="mb-xs block font-medium">Units</span>
           <input
             type="number"
             min="1"
             value={form.unitsNeeded}
             onChange={(e) => setForm({ ...form, unitsNeeded: e.target.value })}
-            className="w-20 rounded-md border border-black/15 px-sm py-xs text-right"
+            className="w-20 rounded-md border border-rule px-sm py-xs text-right"
           />
         </label>
 
-        <label className="flex items-center gap-sm text-sm">
+        <label className="flex items-center gap-sm text-small">
           <input
             type="checkbox"
             checked={form.urgent}
@@ -305,14 +305,14 @@ function ManualRequestForm({ onDone }) {
         </label>
       </div>
 
-      <label className="mt-md block text-sm">
+      <label className="mt-md block text-small">
         <span className="mb-xs block font-medium">Reason</span>
         <input
           type="text"
           value={form.reason}
           onChange={(e) => setForm({ ...form, reason: e.target.value })}
           placeholder="Road accident, theatre 2"
-          className="w-full rounded-md border border-black/15 px-sm py-xs"
+          className="w-full rounded-md border border-rule px-sm py-xs"
         />
       </label>
 
@@ -325,7 +325,7 @@ function ManualRequestForm({ onDone }) {
         </Button>
       </div>
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
+      {error && <p className="mt-sm text-small text-blood">{error}</p>}
     </Card>
   );
 }
@@ -365,7 +365,7 @@ export default function AlertsPage() {
   return (
     <DashboardShell
       title="Alerts and requests"
-      subtitle="Nothing here reaches a donor until you approve it."
+      standfirst="Nothing here reaches a donor until you approve it."
     >
       {notice && (
         <div className="mb-lg">
@@ -390,12 +390,12 @@ export default function AlertsPage() {
       {data && (
         <>
           <section className="mb-xl">
-            <h2 className="mb-md text-lg font-semibold">
+            <h2 className="mb-md text-h4 font-semibold">
               Waiting for your approval ({drafts.length})
             </h2>
             {drafts.length === 0 ? (
               <Card>
-                <p className="text-sm text-ink-muted">
+                <p className="text-small text-ink-muted">
                   Nothing waiting. Drafts appear here when a blood group falls to
                   or below the minimum you confirmed.
                 </p>
@@ -413,7 +413,7 @@ export default function AlertsPage() {
 
           {active.length > 0 && (
             <section className="mb-xl">
-              <h2 className="mb-md text-lg font-semibold">Active ({active.length})</h2>
+              <h2 className="mb-md text-h4 font-semibold">Active ({active.length})</h2>
               {active.map((item) => (
                 <ActiveCard key={item.id} item={item} onDone={refresh} />
               ))}
@@ -422,15 +422,15 @@ export default function AlertsPage() {
 
           {finished.length > 0 && (
             <section>
-              <h2 className="mb-md text-lg font-semibold">Finished ({finished.length})</h2>
+              <h2 className="mb-md text-h4 font-semibold">Finished ({finished.length})</h2>
               {finished.slice(0, 10).map((item) => (
                 <Card key={item.id} className="mb-sm">
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center justify-between text-small">
                     <span>
-                      <strong className="text-primary">{item.bloodGroup}</strong> ·{' '}
+                      <strong className="text-blood">{item.bloodGroup}</strong> ·{' '}
                       {item.unitsNeeded} units · {STATE_LABEL[item.state]}
                     </span>
-                    <span className="text-xs text-ink-muted">
+                    <span className="text-tiny text-ink-muted">
                       {new Date(item.createdAt).toLocaleDateString('en-IN', {
                         day: 'numeric',
                         month: 'short',

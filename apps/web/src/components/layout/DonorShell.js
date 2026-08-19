@@ -2,27 +2,39 @@
 
 // Donor app shell.
 //
-// Written for the donor base actually surveyed at camps: varying
-// literacy, varying smartphone familiarity, often on a phone with a
-// patchy connection. Rules section 7 asks for plain language and no
-// jargon, which here means short sentences, no product vocabulary
-// ("eligibility window", "targeting pool"), and never more than one
-// thing to decide at a time.
+// A different register from the staff dashboard on purpose. Blood bank
+// screens are instruments used all day; this is read once on a phone,
+// possibly while queuing at a camp, by someone doing a favour. So the
+// measure is narrower, the type is larger, and there is less on screen.
+//
+// Rules section 7 asks for plain language and no jargon. Visually that
+// means the same thing: no dense tables, no dashboards, one decision at
+// a time.
 
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../context/AuthContext.js';
-import { Spinner, Alert, Button } from '../ui/index.js';
+import { Spinner, Label, Button } from '../ui/index.js';
 
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/camps', label: 'Camps' },
-  { href: '/donations', label: 'My donations' },
+  { href: '/donations', label: 'Donations' },
   { href: '/preferences', label: 'Settings' },
 ];
 
-export default function DonorShell({ children, title }) {
+const Gate = ({ title, children }) => (
+  <div className="mx-auto max-w-measure px-lg py-3xl">
+    <p className="font-display text-h1 leading-none">Raktasetu</p>
+    <div className="mt-2xl rule-top pt-lg">
+      <h1 className="font-sans text-h3 font-semibold tracking-tight">{title}</h1>
+      <div className="mt-md text-base text-ink-muted">{children}</div>
+    </div>
+  </div>
+);
+
+export default function DonorShell({ children, title, standfirst }) {
   const { isLoading, isAuthenticated, profile, error, logout } = useAuth();
   const router = useRouter();
 
@@ -36,114 +48,102 @@ export default function DonorShell({ children, title }) {
 
   if (!isAuthenticated) {
     return (
-      <div className="mx-auto max-w-md p-xl">
-        <h1 className="mb-lg text-center text-xxl font-bold text-primary">Raktasetu</h1>
-        <Alert tone="info" title="Please sign in">
-          Sign in to see if blood of your group is needed nearby.
-          <div className="mt-md flex flex-wrap gap-md">
-            <Link href="/login">
-              <Button>Sign in</Button>
-            </Link>
-            <Link href="/register">
-              <Button variant="secondary">Register as a donor</Button>
-            </Link>
-          </div>
-          <p className="mt-md text-xs text-ink-muted">
-            Run a blood bank?{' '}
-            <Link className="font-semibold text-primary underline" href="/apply">
-              Register it here
-            </Link>
-          </p>
-        </Alert>
-      </div>
+      <Gate title="Blood needed near you">
+        Sign in to see when blood of your group is needed nearby, and to answer
+        when it is.
+        <div className="mt-lg flex flex-wrap gap-md">
+          <Link href="/login"><Button>Sign in</Button></Link>
+          <Link href="/register"><Button variant="secondary">Register as a donor</Button></Link>
+        </div>
+        <p className="mt-lg text-small text-ink-faint">
+          Run a blood bank?{' '}
+          <Link className="text-blood underline underline-offset-4" href="/apply">
+            Register it here
+          </Link>
+        </p>
+      </Gate>
     );
   }
 
-  if (error) {
-    return (
-      <div className="mx-auto max-w-md p-xl">
-        <Alert tone="danger" title="Something went wrong">{error}</Alert>
-      </div>
-    );
-  }
+  if (error) return <Gate title="Something went wrong">{error}</Gate>;
 
-  // Signed in with Firebase but no donor record. Most likely a staff
-  // account that landed on the wrong surface.
   if (profile?.kind !== 'DONOR') {
     return (
-      <div className="mx-auto max-w-md p-xl">
-        <Alert tone="info" title="This is the donor app">
-          {profile?.kind === 'STAFF' ? (
+      <Gate title="This is the donor app">
+        {profile?.kind === 'STAFF' ? (
+          <>Your account belongs to a blood bank.</>
+        ) : profile?.kind === 'ADMIN' ? (
+          <>You are a platform administrator.</>
+        ) : (
+          <>This account is not registered yet. Are you a donor, or a blood bank?</>
+        )}
+        <div className="mt-lg flex flex-wrap gap-md">
+          {profile?.kind === 'STAFF' && (
+            <Link href="/dashboard"><Button>Go to the dashboard</Button></Link>
+          )}
+          {profile?.kind === 'ADMIN' && (
+            <Link href="/admin"><Button>Go to administration</Button></Link>
+          )}
+          {!profile?.kind && (
             <>
-              Your account belongs to a blood bank.{' '}
-              <Link className="font-semibold text-primary underline" href="/dashboard">
-                Go to the dashboard
-              </Link>
-            </>
-          ) : profile?.kind === 'ADMIN' ? (
-            <>
-              You are a platform administrator.{' '}
-              <Link className="font-semibold text-primary underline" href="/admin">
-                Go to administration
-              </Link>
-            </>
-          ) : (
-            <>
-              This account is not registered yet. Are you a donor, or a blood
-              bank?
-              <div className="mt-md flex flex-wrap gap-md">
-                <Link href="/register">
-                  <Button>Register as a donor</Button>
-                </Link>
-                <Link href="/apply">
-                  <Button variant="secondary">Register a blood bank</Button>
-                </Link>
-              </div>
+              <Link href="/register"><Button>Register as a donor</Button></Link>
+              <Link href="/apply"><Button variant="secondary">Register a blood bank</Button></Link>
             </>
           )}
-          <div className="mt-md">
-            <Button variant="secondary" onClick={logout}>Sign out</Button>
-          </div>
-        </Alert>
-      </div>
+          <Button variant="ghost" onClick={logout}>Sign out</Button>
+        </div>
+      </Gate>
     );
   }
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-black/10 bg-surface">
-        <div className="mx-auto flex max-w-2xl items-center justify-between px-lg py-md">
-          <div>
-            <p className="text-lg font-bold text-primary">Raktasetu</p>
-            <p className="text-xs text-ink-muted">{profile.name}</p>
-          </div>
-          <Button variant="ghost" onClick={logout}>Sign out</Button>
-        </div>
-
-        <nav className="mx-auto flex max-w-2xl gap-lg px-lg">
-          {NAV.map((item) => {
-            const active = router.pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`-mb-px border-b-2 pb-sm text-sm font-medium ${
-                  active
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-ink-muted hover:text-ink'
-                }`}
-              >
-                {item.label}
+      <header className="rule-bottom">
+        <div className="mx-auto max-w-2xl px-lg">
+          <div className="flex items-end justify-between gap-md py-lg">
+            <div>
+              <Link href="/" className="font-display text-h3 leading-none tracking-tight">
+                Raktasetu
               </Link>
-            );
-          })}
-        </nav>
+              <p className="mt-xs font-mono text-tiny text-ink-muted">{profile.name}</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={logout}>Sign out</Button>
+          </div>
+
+          <nav className="-mb-px flex gap-lg">
+            {NAV.map((item) => {
+              const active = router.pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`border-b-rule pb-sm font-mono text-micro uppercase tracking-label transition-colors ${
+                    active ? 'border-blood text-blood' : 'border-transparent text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-lg py-xl">
-        {title && <h1 className="mb-lg text-xl font-bold">{title}</h1>}
-        {children}
+      <main className="mx-auto max-w-2xl px-lg py-2xl">
+        {title && (
+          <div className="mb-xl">
+            <h1 className="font-display text-h2 leading-none tracking-tight">{title}</h1>
+            {standfirst && <p className="mt-md text-lead text-ink-muted">{standfirst}</p>}
+          </div>
+        )}
+        <div className="rise">{children}</div>
       </main>
+
+      <footer className="rule-top">
+        <div className="mx-auto max-w-2xl px-lg py-lg">
+          <Label>Your details are never shown to patients or their families</Label>
+        </div>
+      </footer>
     </div>
   );
 }

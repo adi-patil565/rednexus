@@ -20,14 +20,14 @@ import { auth, applyAsInstitution, toFormError } from '@rednexus/api';
 import { Card, Button, Alert } from '../components/ui/index.js';
 
 const inputClass =
-  'w-full rounded-md border border-black/15 px-sm py-sm focus:border-primary focus:outline-none';
+  'w-full rounded-md border border-rule px-sm py-sm focus:border-blood focus:outline-none';
 
 const Field = ({ label, hint, error, children }) => (
   <label className="mb-lg block">
-    <span className="mb-xs block text-sm font-medium">{label}</span>
-    {hint && <span className="mb-xs block text-xs text-ink-muted">{hint}</span>}
+    <span className="mb-xs block text-small font-medium">{label}</span>
+    {hint && <span className="mb-xs block text-tiny text-ink-muted">{hint}</span>}
     {children}
-    {error && <span className="mt-xs block text-sm text-danger">{error}</span>}
+    {error && <span className="mt-xs block text-small text-blood">{error}</span>}
   </label>
 );
 
@@ -85,10 +85,10 @@ export default function ApplyPage() {
   if (done) {
     return (
       <div className="mx-auto max-w-md p-xl">
-        <h1 className="mb-lg text-center text-xxl font-bold text-primary">Raktasetu</h1>
+        <h1 className="mb-lg text-center text-h3 font-bold text-blood">Raktasetu</h1>
         <Card>
-          <h2 className="mb-md text-lg font-semibold">Application received</h2>
-          <p className="text-sm">{done.message}</p>
+          <h2 className="mb-md text-h4 font-semibold">Application received</h2>
+          <p className="text-small">{done.message}</p>
           <div className="mt-lg">
             <Link href="/dashboard">
               <Button>Go to the dashboard</Button>
@@ -101,8 +101,8 @@ export default function ApplyPage() {
 
   return (
     <div className="mx-auto max-w-lg px-lg py-xl">
-      <h1 className="mb-xs text-center text-xxl font-bold text-primary">Raktasetu</h1>
-      <p className="mb-lg text-center text-sm text-ink-muted">
+      <h1 className="mb-xs text-center text-h3 font-bold text-blood">Raktasetu</h1>
+      <p className="mb-lg text-center text-small text-ink-muted">
         Register your blood bank
       </p>
 
@@ -137,7 +137,7 @@ export default function ApplyPage() {
                 ['EXTERNAL', 'Standalone — we serve several hospitals'],
                 ['IN_HOUSE', 'Inside one hospital'],
               ].map(([value, label]) => (
-                <label key={value} className="flex items-center gap-sm text-sm">
+                <label key={value} className="flex items-center gap-sm text-small">
                   <input
                     type="radio"
                     name="category"
@@ -178,7 +178,7 @@ export default function ApplyPage() {
           </Field>
 
           <h2 className="mb-md mt-xl font-semibold">Your account</h2>
-          <p className="mb-lg text-xs text-ink-muted">
+          <p className="mb-lg text-tiny text-ink-muted">
             You will be the first staff member. You can add colleagues later.
             Confirming thresholds and approving alerts are always recorded
             against a named person, so every blood bank needs at least one
@@ -227,7 +227,7 @@ export default function ApplyPage() {
         </form>
       </Card>
 
-      <p className="mt-lg text-center text-xs text-ink-muted">
+      <p className="mt-lg text-center text-tiny text-ink-muted">
         A platform administrator checks every application before a blood bank
         can report usage or contact donors.
       </p>

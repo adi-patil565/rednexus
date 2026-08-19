@@ -30,20 +30,20 @@ export default function DonationsPage() {
       {data && (
         <>
           <Card className="mb-lg">
-            <p className="text-sm text-ink-muted">Times you have donated</p>
-            <p className="text-xxl font-bold text-primary">{data.total}</p>
+            <p className="text-small text-ink-muted">Times you have donated</p>
+            <p className="text-h3 font-bold text-blood">{data.total}</p>
           </Card>
 
           {data.donations.length === 0 ? (
             <Card>
-              <p className="text-sm text-ink-muted">
+              <p className="text-small text-ink-muted">
                 No donations recorded yet. Once you donate, it will show here.
               </p>
             </Card>
           ) : (
             data.donations.map((d) => (
               <Card key={d.id} className="mb-sm">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-small">
                   <div>
                     <p className="font-medium">
                       {new Date(d.date).toLocaleDateString('en-IN', {
@@ -52,12 +52,12 @@ export default function DonationsPage() {
                         year: 'numeric',
                       })}
                     </p>
-                    <p className="text-xs text-ink-muted">{d.bloodBank}</p>
+                    <p className="text-tiny text-ink-muted">{d.bloodBank}</p>
                   </div>
                   {d.hbValue != null && (
                     <div className="text-right">
                       <p className="font-semibold">{d.hbValue} g/dl</p>
-                      <p className="text-xs text-ink-muted">Haemoglobin</p>
+                      <p className="text-tiny text-ink-muted">Haemoglobin</p>
                     </div>
                   )}
                 </div>

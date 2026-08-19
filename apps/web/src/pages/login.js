@@ -2,25 +2,23 @@
 
 // Sign in.
 //
-// Note what is NOT here: no role selector.
+// A two-panel editorial spread: the left states what the product is,
+// the right does the work. Splitting them lets the form stay almost
+// empty — five elements — while the page still says something.
 //
-// The screen this replaces offered three tabs - Donor, Blood Bank, and
-// Platform Admin - and wrote whichever the visitor picked straight into
-// their profile. The admin tab was gated by an "authorization code"
-// that was only ever checked by a client-side `min(4)` string rule, so
-// anyone could mint themselves full platform access with four
-// characters.
-//
-// Staff and administrator accounts are now provisioned deliberately and
-// the role is read from Postgres. There is nothing to choose here
-// because choosing was the vulnerability.
+// Note what is NOT here: no role selector. The screen this replaced
+// offered Donor / Blood Bank / Platform Admin tabs and wrote whichever
+// the visitor picked into their profile, with the admin tab gated by an
+// "authorization code" checked only by a client-side min(4) rule. Roles
+// are provisioned now. There is nothing to choose, because choosing was
+// the vulnerability.
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@rednexus/api';
-import { Card, Button, Alert } from '../components/ui/index.js';
+import { Button, Label, Note } from '../components/ui/index.js';
 import { useAuth } from '../context/AuthContext.js';
 
 const FRIENDLY_ERRORS = {
@@ -45,9 +43,7 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  // Already signed in: hand off to the index, which routes by role.
-  // Sending everyone to /dashboard was wrong for admins and donors -
-  // an admin landed on "wrong dashboard" with no way out.
+  // The index routes by role; login cannot know the role yet.
   if (isAuthenticated) {
     router.replace('/');
     return null;
@@ -68,66 +64,104 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-lg">
-      <div className="w-full max-w-sm">
-        <div className="mb-lg text-center">
-          <h1 className="text-xxl font-bold text-primary">Raktasetu</h1>
-          <p className="mt-xs text-sm text-ink-muted">Blood bank dashboard</p>
+    <div className="min-h-screen md:grid md:grid-cols-2">
+      {/* ---- Left: the argument ---- */}
+      <section className="flex flex-col justify-between border-rule px-lg py-2xl md:border-r md:px-2xl md:py-3xl">
+        <div>
+          <p className="font-display text-h2 leading-none tracking-tight">Raktasetu</p>
+          <Label className="mt-sm block">Consumption-based blood supply</Label>
         </div>
 
-        <Card>
-          <form onSubmit={submit}>
-            <label className="mb-md block text-sm">
-              <span className="mb-xs block font-medium">Email</span>
+        <div className="my-2xl max-w-measure">
+          <h1 className="font-display text-h1 leading-[1.02] tracking-tight md:text-display">
+            Blood banks collect in bursts.
+            <br />
+            Hospitals use it <em className="not-italic text-blood">every day.</em>
+          </h1>
+          <p className="mt-lg text-lead text-ink-muted">
+            Raktasetu measures what a blood bank actually issues, turns that into
+            a minimum stock level and a weekly collection target, and asks a
+            named person to approve both.
+          </p>
+        </div>
+
+        {/* Three facts as a Swiss data strip. */}
+        <dl className="grid grid-cols-3 gap-md rule-top pt-lg">
+          {[
+            ['8', 'Blood groups tracked separately'],
+            ['0', 'Alerts sent without approval'],
+            ['5–7', 'Days ahead for regular patients'],
+          ].map(([figure, caption]) => (
+            <div key={caption}>
+              <dd className="font-display text-h2 leading-none tabular">{figure}</dd>
+              <dt className="mt-sm text-tiny leading-snug text-ink-faint">{caption}</dt>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      {/* ---- Right: the work ---- */}
+      <section className="flex items-center px-lg py-2xl md:px-2xl">
+        <div className="w-full max-w-sm">
+          <Label>Sign in</Label>
+          <h2 className="mt-sm font-sans text-h3 font-semibold tracking-tight">Your account</h2>
+
+          <form onSubmit={submit} className="mt-xl">
+            <div className="mb-xl">
+              <Label as="label" className="mb-xs block">
+                Email
+              </Label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
-                className="w-full rounded-md border border-black/15 px-sm py-xs focus:border-primary focus:outline-none"
+                className="field"
               />
-            </label>
+            </div>
 
-            <label className="mb-lg block text-sm">
-              <span className="mb-xs block font-medium">Password</span>
+            <div className="mb-xl">
+              <Label as="label" className="mb-xs block">
+                Password
+              </Label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                className="w-full rounded-md border border-black/15 px-sm py-xs focus:border-primary focus:outline-none"
+                className="field"
               />
-            </label>
+            </div>
 
             {error && (
-              <div className="mb-md">
-                <Alert tone="danger">{error}</Alert>
+              <div className="mb-lg">
+                <Note tone="danger">{error}</Note>
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={busy}>
+            <Button type="submit" size="lg" className="w-full" disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
-        </Card>
 
-        <div className="mt-lg text-center text-xs text-ink-muted">
-          <p>
-            New donor?{' '}
-            <Link className="font-semibold text-primary underline" href="/register">
-              Register here
-            </Link>
-          </p>
-          <p className="mt-xs">
-            Registering a blood bank?{' '}
-            <Link className="font-semibold text-primary underline" href="/apply">
-              Apply here
-            </Link>
-          </p>
+          <div className="mt-2xl rule-top pt-lg">
+            <p className="text-small text-ink-muted">
+              New donor?{' '}
+              <Link className="text-blood underline underline-offset-4" href="/register">
+                Register here
+              </Link>
+            </p>
+            <p className="mt-xs text-small text-ink-muted">
+              Registering a blood bank?{' '}
+              <Link className="text-blood underline underline-offset-4" href="/apply">
+                Apply here
+              </Link>
+            </p>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

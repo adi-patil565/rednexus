@@ -2,15 +2,17 @@
 
 // Donor home.
 //
-// Two things, in this order:
-//   1. Any request waiting for an answer, at the very top.
-//   2. Whether they can donate right now, and if not, when.
+// Two things, in this order: anything waiting for an answer, then
+// whether they can donate and when.
+//
+// The register is deliberately unlike the staff dashboard. This is read
+// once, on a phone, possibly in a queue, by someone doing a favour — so
+// the blood group is set large in display serif, there is one decision
+// per card, and nothing is a table.
 //
 // Deliberately absent from an alert: who the blood is for. Rules
 // section 1 forbids a donor-to-patient channel, and naming the patient
-// would create one out of a notification. The donor is told what is
-// needed and which blood bank asked - enough to decide, and nothing
-// that lets them bypass the institution.
+// would manufacture one out of a notification.
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -19,7 +21,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMyAlerts, respondToRequest, toFormError } from '@rednexus/api';
 import DonorShell from '../components/layout/DonorShell.js';
 import { useAuth } from '../context/AuthContext.js';
-import { Card, Button, Alert, Spinner, Badge } from '../components/ui/index.js';
+import {
+  Panel,
+  Note,
+  Spinner,
+  Badge,
+  Button,
+  Label,
+  BloodGroup,
+} from '../components/ui/index.js';
 
 function AlertCard({ alert, onDone }) {
   const [error, setError] = useState(null);
@@ -31,36 +41,46 @@ function AlertCard({ alert, onDone }) {
   });
 
   return (
-    <Card className="mb-md border-l-4 border-l-primary">
-      <div className="flex flex-wrap items-baseline justify-between gap-sm">
-        <p className="text-lg font-semibold">
-          <span className="text-xxl font-bold text-primary">{alert.bloodGroup}</span> blood
-          is needed
-        </p>
-        {alert.urgent && <Badge tone="danger">Needed urgently</Badge>}
+    <Panel accent="blood" className="mb-lg">
+      <div className="flex items-start justify-between gap-md">
+        <div>
+          <Label className="block">Needed now</Label>
+          <div className="mt-sm flex items-baseline gap-md">
+            <BloodGroup size="lg">{alert.bloodGroup}</BloodGroup>
+            <span className="font-mono text-small tabular text-ink-muted">
+              {alert.unitsNeeded} {alert.unitsNeeded === 1 ? 'unit' : 'units'}
+            </span>
+          </div>
+        </div>
+        {alert.urgent && <Badge tone="danger">Urgent</Badge>}
       </div>
 
-      <p className="mt-sm text-sm text-ink-muted">
-        {alert.bloodBank} needs {alert.unitsNeeded}{' '}
-        {alert.unitsNeeded === 1 ? 'unit' : 'units'}. They are in area {alert.area}.
+      <p className="mt-lg text-base text-ink">
+        <span className="font-medium">{alert.bloodBank}</span> needs blood of your
+        group. They are in area {alert.area}.
       </p>
 
-      <div className="mt-lg flex gap-md">
-        <Button onClick={() => answer.mutate(true)} disabled={answer.isPending}>
+      <div className="mt-xl flex flex-wrap gap-md">
+        <Button size="lg" onClick={() => answer.mutate(true)} disabled={answer.isPending}>
           {answer.isPending ? 'Sending…' : 'Yes, I can donate'}
         </Button>
-        <Button variant="secondary" onClick={() => answer.mutate(false)} disabled={answer.isPending}>
+        <Button
+          size="lg"
+          variant="secondary"
+          onClick={() => answer.mutate(false)}
+          disabled={answer.isPending}
+        >
           Not this time
         </Button>
       </div>
 
-      <p className="mt-sm text-xs text-ink-muted">
-        Saying yes shares your name and phone number with this blood bank so
-        they can arrange a time. Nobody else sees them.
+      <p className="mt-md text-tiny text-ink-faint">
+        Saying yes shares your name and phone number with this blood bank so they
+        can arrange a time. Nobody else sees them.
       </p>
 
-      {error && <p className="mt-sm text-sm text-danger">{error}</p>}
-    </Card>
+      {error && <p className="mt-sm text-tiny text-blood">{error}</p>}
+    </Panel>
   );
 }
 
@@ -69,9 +89,9 @@ export default function DonorHome() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  // This route is the donor home AND the post-login landing point, so it
-  // is where role dispatch belongs. Staff and admins are sent to their
-  // own surface rather than shown a donor page they cannot use.
+  // This route is the donor home AND the post-login landing point, so
+  // role dispatch belongs here. Staff and admins go to their own
+  // surface rather than a donor page they cannot use.
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
     if (profile?.kind === 'ADMIN') router.replace('/admin');
@@ -91,12 +111,14 @@ export default function DonorHome() {
 
   return (
     <DonorShell>
-      {/* Anything needing an answer comes first, before status. */}
+      {/* Anything needing an answer comes first, above status. */}
       {open.length > 0 && (
-        <section className="mb-xl">
-          <h2 className="mb-md text-lg font-semibold">
-            {open.length === 1 ? 'Someone needs blood' : `${open.length} requests need an answer`}
-          </h2>
+        <section className="mb-2xl">
+          <h1 className="mb-lg font-display text-h2 leading-tight tracking-tight">
+            {open.length === 1
+              ? 'Someone needs blood'
+              : `${open.length} requests need an answer`}
+          </h1>
           {open.map((a) => (
             <AlertCard key={a.requestId} alert={a} onDone={refresh} />
           ))}
@@ -104,78 +126,84 @@ export default function DonorHome() {
       )}
 
       {profile?.kind === 'DONOR' && (
-        <Card className="mb-lg">
-          <div className="flex items-baseline justify-between">
+        <Panel className="mb-xl">
+          <div className="flex items-start justify-between gap-md">
             <div>
-              <p className="text-sm text-ink-muted">Your blood group</p>
-              <p className="text-xxl font-bold text-primary">
-                {profile.bloodGroupVerified ?? profile.bloodGroup}
-              </p>
+              <Label className="block">Your blood group</Label>
+              <div className="mt-sm">
+                <BloodGroup size="lg">
+                  {profile.bloodGroupVerified ?? profile.bloodGroup}
+                </BloodGroup>
+              </div>
               {!profile.bloodGroupVerified && (
-                <p className="text-xs text-ink-muted">
+                <p className="mt-sm max-w-measure text-tiny text-ink-faint">
                   As you told us. The blood bank confirms this when you donate.
                 </p>
               )}
             </div>
             <Badge tone={profile.eligible ? 'success' : 'neutral'}>
-              {profile.eligible ? 'You can donate' : 'Not just now'}
+              {profile.eligible ? 'Can donate' : 'Not just now'}
             </Badge>
           </div>
 
           {/* Plain language, no product vocabulary. */}
-          <p className="mt-md text-sm">{profile.eligibilityMessage}</p>
+          <p className="mt-lg rule-top pt-lg text-lead text-ink">
+            {profile.eligibilityMessage}
+          </p>
 
           {profile.status === 'PENDING_REVIEW' && (
-            <div className="mt-md">
-              <Alert tone="info">
+            <div className="mt-lg">
+              <Note tone="info">
                 Blood bank staff are checking your details. You will not be asked
                 to donate until that is done.
-              </Alert>
+              </Note>
             </div>
           )}
 
           {profile.notificationsPaused && (
-            <div className="mt-md">
-              <Alert tone="warning">
+            <div className="mt-lg">
+              <Note tone="warning" title="Paused">
                 You have paused requests, so we will not contact you.{' '}
-                <Link className="font-semibold text-primary underline" href="/preferences">
+                <Link className="text-blood underline underline-offset-4" href="/preferences">
                   Turn them back on
                 </Link>
-              </Alert>
+              </Note>
             </div>
           )}
-        </Card>
+        </Panel>
       )}
 
       {alertsLoading && <Spinner label="Checking for requests" />}
 
       {!alertsLoading && open.length === 0 && (
-        <Card>
-          <p className="text-sm text-ink-muted">
+        <Panel>
+          <p className="text-base text-ink-muted">
             Nothing needs your answer right now. We will let you know when blood
             of your group is needed nearby.
           </p>
-        </Card>
+        </Panel>
       )}
 
       {answered.length > 0 && (
-        <section className="mt-xl">
-          <h2 className="mb-md text-lg font-semibold">Earlier requests</h2>
+        <section className="mt-2xl">
+          <Label className="mb-md block">Earlier requests</Label>
           {answered.slice(0, 8).map((a) => (
-            <Card key={a.requestId} className="mb-sm">
-              <div className="flex items-center justify-between text-sm">
-                <span>
-                  <strong className="text-primary">{a.bloodGroup}</strong> · {a.bloodBank}
-                </span>
-                <Badge tone={a.response === 'ACCEPTED' ? 'success' : 'neutral'}>
-                  {a.response === 'ACCEPTED'
-                    ? 'You said yes'
-                    : a.response === 'DECLINED'
-                      ? 'You said no'
-                      : 'Closed'}
-                </Badge>
-              </div>
-            </Card>
+            <div
+              key={a.requestId}
+              className="flex items-center justify-between gap-md rule-bottom py-md"
+            >
+              <span className="text-small">
+                <strong className="font-display text-h4 text-blood">{a.bloodGroup}</strong>
+                <span className="ml-md text-ink-muted">{a.bloodBank}</span>
+              </span>
+              <Badge tone={a.response === 'ACCEPTED' ? 'success' : 'neutral'}>
+                {a.response === 'ACCEPTED'
+                  ? 'You said yes'
+                  : a.response === 'DECLINED'
+                    ? 'You said no'
+                    : 'Closed'}
+              </Badge>
+            </div>
           ))}
         </section>
       )}
