@@ -36,8 +36,6 @@ def forecast(history: pd.Series, horizon: int) -> np.ndarray:
     short or near-constant series, so the fallback is a real code path
     rather than defensive decoration.
     """
-    from statsmodels.tsa.statespace.sarimax import SARIMAX
-
     from fallback.rolling_average import forecast as fallback_forecast
 
     # Guard BEFORE fitting, not just on exception. SARIMA on three days
@@ -49,6 +47,11 @@ def forecast(history: pd.Series, horizon: int) -> np.ndarray:
         return fallback_forecast(history, horizon)
 
     try:
+        # Same reasoning as prophet_model: the model import belongs
+        # inside the try so a missing dependency degrades rather than
+        # raising.
+        from statsmodels.tsa.statespace.sarimax import SARIMAX
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             model = SARIMAX(

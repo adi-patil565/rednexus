@@ -35,8 +35,6 @@ for _name in ("prophet", "cmdstanpy"):
 
 def forecast(history: pd.Series, horizon: int) -> np.ndarray:
     """Fit and predict, falling back to the trailing mean on failure."""
-    from prophet import Prophet
-
     from fallback.rolling_average import forecast as fallback_forecast
 
     # Same guard as SARIMA, for the same reason: too little history
@@ -45,6 +43,13 @@ def forecast(history: pd.Series, horizon: int) -> np.ndarray:
         return fallback_forecast(history, horizon)
 
     try:
+        # Imported INSIDE the try, deliberately. Prophet is optional -
+        # CI does not install it, because its absence is a path worth
+        # testing. An import at function top level raises ImportError
+        # out of forecast() instead of degrading, which is the failure
+        # Rules section 5 exists to prevent.
+        from prophet import Prophet
+
         frame = pd.DataFrame({"ds": history.index, "y": history.values})
 
         with warnings.catch_warnings():
