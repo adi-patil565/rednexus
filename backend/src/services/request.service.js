@@ -14,6 +14,8 @@ import { STATE, assertTransition, NOTIFIABLE_STATES } from '../lib/stateMachine.
 import { checkBreach } from './threshold.service.js';
 import { getEffectiveStock, getPendingScreening } from './stock.service.js';
 import { selectDonors, DEFAULT_MONTHLY_CAP } from './targeting.service.js';
+import { deliver, startingChannel } from './notification.service.js';
+import { waitMinutesFor } from './escalation.service.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('request');
@@ -220,9 +222,10 @@ export const dispatch = async (prisma, requestId, { today = new Date() } = {}) =
       data: selected.map(({ donor, score }) => ({
         requestId,
         donorId: donor.id,
-        // Channel sequencing (push -> wait -> SMS -> wait -> IVR) is
-        // Phase 6. The donor's stated preference is honoured now.
-        channel: donor.preferredChannel,
+        // The donor's stated preference is the FIRST attempt, not a
+        // later one. Honouring a preference by trying something else
+        // first is not honouring it.
+        channel: startingChannel(donor.preferredChannel),
         stage,
         rankScore: score,
       })),
@@ -233,6 +236,21 @@ export const dispatch = async (prisma, requestId, { today = new Date() } = {}) =
       data: { state: STATE.NOTIFIED, stageLevel: stage },
     }),
   ]);
+
+  // Deliver sequentially per donor. Failures are logged, never thrown -
+  // a gateway being down is not the institution's problem to see.
+  for (const { donor } of selected) {
+    await deliver({
+      channel: startingChannel(donor.preferredChannel),
+      donorId: donor.id,
+      requestId,
+    });
+  }
+
+  // Arm the follow-up. Best effort: if Redis is down this returns
+  // scheduled:false and the request simply waits for a human.
+  const { scheduleEscalationCheck } = await import('../jobs/queues.js');
+  await scheduleEscalationCheck(requestId, waitMinutesFor(request));
 
   // Rules section 4: donor IDs only, never names or phone numbers.
   log.info(
