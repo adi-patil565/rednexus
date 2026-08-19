@@ -1,5 +1,22 @@
-// Donor API calls — shared between web and mobile
-import axios from 'axios';
+// Donor API (F1 registration, F3 preferences, F8 history).
+import { client } from './client.js';
 
-export const getDonors = () => axios.get('/api/donors');
-export const registerDonor = (data) => axios.post('/api/donors', data);
+/** QR camp registration. Public - no account exists yet. */
+export const registerDonor = (data) =>
+  client.post('/api/donors', data).then((r) => r.data);
+
+/** Eligibility summary for any donor. Carries no contact details (F7). */
+export const getDonorSummary = (id) =>
+  client.get(`/api/donors/${id}`).then((r) => r.data);
+
+/** Requests this donor has been asked about. */
+export const getMyAlerts = () =>
+  client.get('/api/donors/me/alerts').then((r) => r.data);
+
+/** The donor's own donation history and Hb trend. */
+export const getMyDonations = () =>
+  client.get('/api/donors/me/donations').then((r) => r.data);
+
+/** Pause mode and preferred channel. */
+export const updateMyPreferences = (prefs) =>
+  client.patch('/api/donors/me/preferences', prefs).then((r) => r.data);

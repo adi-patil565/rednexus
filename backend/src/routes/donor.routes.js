@@ -1,10 +1,11 @@
 // Donor routes (F1 registration, F2 eligibility read).
 
 import { Router } from 'express';
-import { donorRegistrationSchema } from '@rednexus/validators';
+import { donorRegistrationSchema, donorPreferencesSchema } from '@rednexus/validators';
 import { DONOR_STATUS, BLOOD_GROUP_LABELS } from '@rednexus/types';
 import { prisma } from '../config/prisma.js';
 import { computeEligibility, eligibilityMessage } from '../services/eligibility.service.js';
+import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('donor');
@@ -37,6 +38,141 @@ const publicView = (donor, today = new Date()) => {
     message: eligibilityMessage(eligibility, today),
   };
 };
+
+/**
+ * Resolve the signed-in donor, or 403.
+ *
+ * A donor may only ever read their own record through these routes -
+ * there is no id parameter to change.
+ */
+const requireDonor = async (req, res, next) => {
+  try {
+    const donor = await prisma.donor.findUnique({ where: { firebaseUid: req.firebaseUid } });
+    if (!donor) {
+      return res.status(403).json({
+        error: 'NOT_A_DONOR',
+        message: 'No donor record is linked to this account.',
+      });
+    }
+    req.donor = donor;
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * GET /api/donors/me/alerts - requests this donor has been asked about.
+ *
+ * Shows what is needed and where, never who it is for. Rules section 1:
+ * requests are institution-mediated, and a donor learning the patient's
+ * identity is the direct donor-to-family channel the platform exists to
+ * avoid.
+ */
+router.get('/me/alerts', verifyFirebaseToken, requireDonor, async (req, res, next) => {
+  try {
+    const logs = await prisma.notificationLog.findMany({
+      where: { donorId: req.donor.id },
+      orderBy: { sentAt: 'desc' },
+      take: 25,
+      include: {
+        request: {
+          include: { institution: { select: { name: true, pincode: true } } },
+        },
+      },
+    });
+
+    return res.json({
+      alerts: logs.map((l) => ({
+        requestId: l.requestId,
+        bloodGroup: BLOOD_GROUP_LABELS[l.request.bloodGroup],
+        unitsNeeded: l.request.unitsNeeded,
+        urgent: l.request.urgent,
+        bloodBank: l.request.institution.name,
+        area: l.request.institution.pincode,
+        sentAt: l.sentAt,
+        response: l.response,
+        respondedAt: l.respondedAt,
+        // Only a live request can still be answered.
+        canRespond:
+          l.response === 'PENDING' &&
+          !['CLOSED', 'CANCELLED'].includes(l.request.state),
+        requestState: l.request.state,
+      })),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * GET /api/donors/me/donations - the donor's own history (F8).
+ */
+router.get('/me/donations', verifyFirebaseToken, requireDonor, async (req, res, next) => {
+  try {
+    const donations = await prisma.donationRecord.findMany({
+      where: { donorId: req.donor.id },
+      orderBy: { date: 'desc' },
+      include: { institution: { select: { name: true } } },
+    });
+
+    return res.json({
+      donations: donations.map((d) => ({
+        id: d.id,
+        date: d.date,
+        bloodBank: d.institution.name,
+        // Hb trend, per F8. Shown as the recorded number without
+        // interpretation - the app does not tell anyone what it means.
+        hbValue: d.hbValue ? Number(d.hbValue) : null,
+        units: d.unitsContributed,
+      })),
+      total: donations.length,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
+ * PATCH /api/donors/me/preferences - pause and channel (F3).
+ *
+ * Pause is absolute once set; nothing in the notification engine
+ * overrides it, however urgent a request is.
+ */
+router.patch('/me/preferences', verifyFirebaseToken, requireDonor, async (req, res, next) => {
+  const parsed = donorPreferencesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'VALIDATION_FAILED',
+      fields: parsed.error.errors.reduce((acc, e) => {
+        acc[e.path.join('.')] = e.message;
+        return acc;
+      }, {}),
+    });
+  }
+
+  try {
+    const updated = await prisma.donor.update({
+      where: { id: req.donor.id },
+      data: parsed.data,
+    });
+
+    log.info(
+      { donorId: updated.id, paused: updated.notificationsPaused },
+      'Donor preferences updated'
+    );
+
+    return res.json({
+      notificationsPaused: updated.notificationsPaused,
+      preferredChannel: updated.preferredChannel,
+      message: updated.notificationsPaused
+        ? 'You will not be contacted until you turn this back on.'
+        : 'You will be contacted when blood of your group is needed nearby.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 /**
  * POST /api/donors - QR camp registration (F1).

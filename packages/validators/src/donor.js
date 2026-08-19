@@ -140,3 +140,17 @@ export const donorStaffUpdateSchema = z.object({
   deferralType: z.enum(['TEMPORARY', 'PERMANENT']).optional(),
   deferralUntilDate: z.coerce.date().optional(),
 });
+
+/**
+ * Donor-controlled notification preferences (F3).
+ *
+ * Pause is the important one. A donor who turns this on is not
+ * contacted again until they turn it off - no urgency override, no
+ * "just this once". A pause that can be overridden is not a pause, and
+ * donor fatigue is one of the two failure modes this project exists to
+ * avoid (Rules section 8).
+ */
+export const donorPreferencesSchema = z.object({
+  notificationsPaused: z.boolean().optional(),
+  preferredChannel: z.enum(['PUSH', 'SMS', 'IVR', 'EMAIL']).optional(),
+});
