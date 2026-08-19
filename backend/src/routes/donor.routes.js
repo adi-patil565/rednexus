@@ -1,11 +1,16 @@
 // Donor routes (F1 registration, F2 eligibility read).
 
 import { Router } from 'express';
-import { donorRegistrationSchema, donorPreferencesSchema } from '@rednexus/validators';
+import {
+  donorRegistrationSchema,
+  donorPreferencesSchema,
+  donorStaffUpdateSchema,
+} from '@rednexus/validators';
 import { DONOR_STATUS, BLOOD_GROUP_LABELS } from '@rednexus/types';
 import { prisma } from '../config/prisma.js';
 import { computeEligibility, eligibilityMessage } from '../services/eligibility.service.js';
 import { verifyFirebaseToken } from '../middleware/authMiddleware.js';
+import { verifiedStaff } from '../middleware/loadUser.js';
 import { moduleLogger } from '../lib/logger.js';
 
 const log = moduleLogger('donor');
@@ -168,6 +173,207 @@ router.patch('/me/preferences', verifyFirebaseToken, requireDonor, async (req, r
       message: updated.notificationsPaused
         ? 'You will not be contacted until you turn this back on.'
         : 'You will be contacted when blood of your group is needed nearby.',
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ============================================================
+// Staff-facing donor management.
+//
+// Contact details ARE returned here, unlike the public projection.
+// F7 restricts donor contact to verified institutions; blood bank staff
+// reviewing their own donor pool are exactly who it is for. Everything
+// below requires verified staff.
+// ============================================================
+
+/**
+ * GET /api/donors/review-queue
+ *
+ * Donors who answered YES to "have you ever been advised not to donate
+ * blood?" and are held until a human clears them. The app never asks
+ * why and never shows a reason, because it never collected one - the
+ * question routes the person to a conversation, not to a record.
+ */
+router.get(
+  '/review-queue',
+  verifyFirebaseToken,
+  ...verifiedStaff,
+  async (req, res, next) => {
+    try {
+      const donors = await prisma.donor.findMany({
+        where: { status: 'PENDING_REVIEW' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return res.json({
+        donors: donors.map((d) => ({
+          id: d.id,
+          name: d.name,
+          phone: d.phone,
+          bloodGroup: BLOOD_GROUP_LABELS[d.bloodGroupSelfReported],
+          areaPincode: d.areaPincode,
+          registeredAt: d.createdAt,
+          registeredAtCampId: d.registeredAtCampId,
+        })),
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/donors/:id/clear-review
+ *
+ * A staff member has spoken to this donor and is satisfied they may be
+ * contacted. Moves PENDING_REVIEW to ACTIVE.
+ *
+ * Note what is not stored: any reason, any medical detail, any note.
+ * Rules section 1 keeps the app out of medical judgements, and a
+ * free-text box here would quietly become a health record.
+ */
+router.post(
+  '/:id/clear-review',
+  verifyFirebaseToken,
+  ...verifiedStaff,
+  async (req, res, next) => {
+    try {
+      const donor = await prisma.donor.findUnique({ where: { id: req.params.id } });
+      if (!donor) {
+        return res.status(404).json({ error: 'NOT_FOUND', message: 'Donor not found.' });
+      }
+      if (donor.status !== 'PENDING_REVIEW') {
+        return res.status(409).json({
+          error: 'NOT_UNDER_REVIEW',
+          message: 'This donor is not waiting for review.',
+        });
+      }
+
+      const updated = await prisma.donor.update({
+        where: { id: donor.id },
+        data: { status: 'ACTIVE', deferralSetByUserId: req.user.id, deferralSetAt: new Date() },
+      });
+
+      log.info(
+        { donorId: updated.id, userId: req.user.id, institutionId: req.user.institutionId },
+        'Donor cleared for contact after review'
+      );
+
+      return res.json({
+        id: updated.id,
+        status: updated.status,
+        message: 'This donor can now be contacted when blood of their group is needed.',
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/donors/:id/staff
+ *
+ * Set the verified blood group, or record a deferral from the paper
+ * form's page 4 Outcome field.
+ *
+ * The form's accompanying "Reasons for Deferral" free text is
+ * deliberately not accepted. A permanent deferral sets the status; a
+ * temporary one sets a date. Neither stores why.
+ */
+router.patch(
+  '/:id/staff',
+  verifyFirebaseToken,
+  ...verifiedStaff,
+  async (req, res, next) => {
+    const parsed = donorStaffUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'VALIDATION_FAILED',
+        fields: parsed.error.errors.reduce((acc, e) => {
+          acc[e.path.join('.')] = e.message;
+          return acc;
+        }, {}),
+      });
+    }
+
+    try {
+      const donor = await prisma.donor.findUnique({ where: { id: req.params.id } });
+      if (!donor) {
+        return res.status(404).json({ error: 'NOT_FOUND', message: 'Donor not found.' });
+      }
+
+      const data = { ...parsed.data };
+      if (data.deferralType || data.deferralUntilDate) {
+        data.deferralSetByUserId = req.user.id;
+        data.deferralSetAt = new Date();
+      }
+      if (data.deferralType === 'PERMANENT') {
+        data.status = 'PERMANENTLY_DEFERRED';
+        data.deferralUntilDate = null;
+      }
+
+      const updated = await prisma.donor.update({ where: { id: donor.id }, data });
+
+      log.info(
+        { donorId: updated.id, userId: req.user.id, deferralType: updated.deferralType ?? null },
+        'Donor record updated by staff'
+      );
+
+      return res.json(publicView(updated));
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/donors/search?phone= or ?pincode=
+ *
+ * Deliberately requires a search term. Returning the whole donor list
+ * with contact details on an empty query would turn a lookup tool into
+ * a bulk export.
+ */
+router.get('/search', verifyFirebaseToken, ...verifiedStaff, async (req, res, next) => {
+  const phone = typeof req.query.phone === 'string' ? req.query.phone.trim() : '';
+  const pincode = typeof req.query.pincode === 'string' ? req.query.pincode.trim() : '';
+
+  if (!phone && !pincode) {
+    return res.status(400).json({
+      error: 'SEARCH_TERM_REQUIRED',
+      message: 'Enter a phone number or PIN code to search.',
+    });
+  }
+
+  try {
+    const donors = await prisma.donor.findMany({
+      where: {
+        ...(phone ? { phone: { contains: phone } } : {}),
+        ...(pincode ? { areaPincode: pincode } : {}),
+      },
+      take: 50,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({
+      donors: donors.map((d) => {
+        const eligibility = computeEligibility(d);
+        return {
+          id: d.id,
+          name: d.name,
+          phone: d.phone,
+          bloodGroup: BLOOD_GROUP_LABELS[d.bloodGroupSelfReported],
+          bloodGroupVerified: d.bloodGroupVerified
+            ? BLOOD_GROUP_LABELS[d.bloodGroupVerified]
+            : null,
+          areaPincode: d.areaPincode,
+          status: d.status,
+          eligible: eligibility.eligible,
+          eligibleFrom: eligibility.eligibleFrom,
+          deferralUntilDate: d.deferralUntilDate,
+        };
+      }),
     });
   } catch (error) {
     return next(error);

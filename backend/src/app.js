@@ -8,6 +8,7 @@ import thresholdRoutes from './routes/threshold.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import donationRoutes from './routes/donation.routes.js';
 import requestRoutes from './routes/request.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 const log = moduleLogger('http');
 
@@ -41,6 +42,7 @@ app.use('/api/thresholds', thresholdRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/donations', donationRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ==========================================
 // 1. Authentication & Profile APIs (/api/auth)  [MOCK]
@@ -298,88 +300,6 @@ app.post('/api/blood-bank/thresholds/confirm', (req, res) => {
     threshold: { bloodGroup, confirmedThreshold, collectionTarget, confirmedAt: new Date().toISOString() },
   });
 });
-
-
-// ==========================================
-// 4. Admin APIs (/api/admin)
-// ==========================================
-
-// All Users stats (Donors, Receivers, Thalassemia flags, statuses)
-app.get('/api/admin/stats/users', (req, res) => {
-  res.json({
-    totalUsers: 1250,
-    donorsCount: 980,
-    receiversCount: 270,
-    thalassemiaPatients: 45,
-    pendingReviewCount: 12,
-    activeEligibleDonors: 710,
-  });
-});
-
-// All Blood Banks stats
-app.get('/api/admin/stats/blood-banks', (req, res) => {
-  res.json({
-    totalBloodBanks: 10,
-    verifiedCount: 8,
-    unverifiedCount: 2,
-    totalDailyUsageUnits: 485,
-    totalStockAvailable: 1540,
-  });
-});
-
-// Overall trends and pattern analysis
-app.get('/api/admin/analytics/trends', (req, res) => {
-  res.json({
-    trends: {
-      monthlyConsumptionUnits: [450, 480, 520, 510, 550, 600, 580, 620],
-      monthlyCollectionUnits: [420, 500, 510, 490, 560, 580, 590, 610],
-      fulfillmentRatePercentage: 96.4,
-      peakDemandBloodGroups: ['O+', 'B+'],
-    },
-  });
-});
-
-// Data visualization feed (ready for frontend charts)
-app.get('/api/admin/analytics/visualization', (req, res) => {
-  res.json({
-    charts: {
-      stockByBloodGroup: [
-        { group: 'A+', units: 280 },
-        { group: 'B+', units: 350 },
-        { group: 'O+', units: 480 },
-        { group: 'AB+', units: 110 },
-        { group: 'Negatives', units: 75 },
-      ],
-      requestsByUrgency: [
-        { level: 'CRITICAL', count: 15 },
-        { level: 'HIGH', count: 42 },
-        { level: 'NORMAL', count: 120 },
-      ],
-    },
-  });
-});
-
-// List pending blood bank institution verification requests
-app.get('/api/admin/institutions/pending', (req, res) => {
-  res.json({
-    pendingInstitutions: [
-      { id: 'inst-001', name: 'Metro Life Blood Bank', category: 'EXTERNAL', pincode: '400705', submittedAt: new Date().toISOString() },
-    ],
-  });
-});
-
-// Verify / Approve / Reject Blood Bank account
-app.put('/api/admin/institutions/:id/verify', (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body; // 'VERIFIED' | 'REJECTED'
-  console.log('[Admin] Verification decision:', { institutionId: id, status });
-  res.json({
-    message: `Institution ${id} verification status set to ${status}`,
-    institutionId: id,
-    status,
-  });
-});
-
 
 
 // Central error handler. Must be last: Express identifies it by arity.
