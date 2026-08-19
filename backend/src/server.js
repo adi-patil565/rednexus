@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { verifyFirebaseToken } from './middleware/authMiddleware.js';
+import donorRoutes from './routes/donor.routes.js';
 
 dotenv.config();
 
@@ -23,7 +24,16 @@ app.get('/api/health', (req, res) => {
 });
 
 // ==========================================
-// 1. Authentication & Profile APIs (/api/auth)
+// REAL routes — backed by Postgres via Prisma.
+//
+// Everything below this block is still a hardcoded mock from the
+// CLAUDE.md section 5.1 route blueprint. Routes graduate up here as
+// they are implemented against the database.
+// ==========================================
+app.use('/api/donors', donorRoutes);
+
+// ==========================================
+// 1. Authentication & Profile APIs (/api/auth)  [MOCK]
 // ==========================================
 
 // Register Donor/Receiver user account
