@@ -19,7 +19,8 @@
   },
   "overrides": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "undici": "^6.28.0"
   },
   "devDependencies": {
     "turbo": "^2.0.0"
