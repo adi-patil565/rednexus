@@ -13,6 +13,7 @@
     "test": "turbo run test --filter=!rednexus",
     "db:migrate": "npm run db:migrate --workspace=@rednexus/backend",
     "db:seed": "npm run db:seed --workspace=@rednexus/backend",
+    "db:seed:auth": "npm run db:seed:auth --workspace=@rednexus/backend",
     "db:studio": "npm run db:studio --workspace=@rednexus/backend",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
