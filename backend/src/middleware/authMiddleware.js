@@ -1,37 +1,76 @@
-import admin from 'firebase-admin';
+// Authentication middleware — fails closed, always.
+//
+// This file previously contained a development fallback: if the Firebase
+// Admin SDK was uninitialized, it set req.user to a hardcoded
+// `dev-user-id` and called next(). Because the SDK is uninitialized
+// whenever no service account is present, that meant ANY Bearer string
+// authenticated successfully, in any environment, including production.
+//
+// Rules section 2: "Institution verification cannot be bypassed,
+// including in development. Do not add a debug flag that skips
+// verification in any environment that could ship."
+//
+// The replacement distinguishes two failures that must never be
+// conflated:
+//   503 - this server cannot verify tokens (an operator problem)
+//   401 - this caller did not present a valid one (a caller problem)
+// Neither one lets the request through.
 
-// Initialize firebase-admin if credentials or app exists
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp();
-  } catch (error) {
-    console.warn('[Backend Auth] Firebase Admin SDK running in offline/uninitialized fallback mode.');
-  }
-}
+import { isAuthAvailable, getUnavailableReason, verifyIdToken } from '../config/firebaseAdmin.js';
+import { moduleLogger } from '../lib/logger.js';
+
+const log = moduleLogger('auth');
 
 /**
- * Express Middleware to verify Bearer Firebase ID token
+ * Verifies the Bearer token and attaches `req.firebaseUid`.
+ *
+ * Deliberately does NOT attach a role. Identity comes from Firebase;
+ * authority comes from the Postgres users table via loadUser, so that a
+ * forged or stale token claim can never grant privileges.
  */
 export const verifyFirebaseToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized. Bearer token missing.' });
+  if (!isAuthAvailable()) {
+    log.error(
+      { path: req.path, reason: getUnavailableReason() },
+      'Rejecting authenticated request: token verification unavailable'
+    );
+    return res.status(503).json({
+      error: 'AUTH_UNAVAILABLE',
+      message:
+        'This server cannot verify authentication tokens. A Firebase ' +
+        'service account is not configured.',
+    });
   }
 
-  const token = authHeader.split('Bearer ')[1];
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return res.status(401).json({
+      error: 'UNAUTHENTICATED',
+      message: 'Missing Bearer token.',
+    });
+  }
+
+  const idToken = header.slice('Bearer '.length).trim();
+  if (!idToken) {
+    return res.status(401).json({
+      error: 'UNAUTHENTICATED',
+      message: 'Missing Bearer token.',
+    });
+  }
 
   try {
-    if (admin.apps.length) {
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      req.user = decodedToken;
-      return next();
-    } else {
-      // Fallback decode for development if admin app is uninitialized
-      req.user = { uid: 'dev-user-id', email: 'dev@raktasetu.org', role: 'DONOR' };
-      return next();
-    }
+    const decoded = await verifyIdToken(idToken);
+    req.firebaseUid = decoded.uid;
+    req.firebaseToken = decoded;
+    return next();
   } catch (error) {
-    console.error('Token verification failed:', error);
-    return res.status(403).json({ error: 'Invalid or expired authentication token.' });
+    // Log the failure reason but never the token itself.
+    log.warn({ path: req.path, reason: error.code || error.message }, 'Token verification failed');
+    return res.status(401).json({
+      error: 'UNAUTHENTICATED',
+      message: 'Invalid or expired authentication token.',
+    });
   }
 };
+
+export default verifyFirebaseToken;
