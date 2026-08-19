@@ -10,6 +10,8 @@ import donationRoutes from './routes/donation.routes.js';
 import requestRoutes from './routes/request.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import campRoutes from './routes/camp.routes.js';
+import recurringRoutes from './routes/recurring.routes.js';
+import historyRoutes from './routes/history.routes.js';
 
 const log = moduleLogger('http');
 
@@ -45,6 +47,8 @@ app.use('/api/donations', donationRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/camps', campRoutes);
+app.use('/api/schedules', recurringRoutes);
+app.use('/api/history', historyRoutes);
 
 // ==========================================
 // 1. Authentication & Profile APIs (/api/auth)  [MOCK]

@@ -20,6 +20,8 @@ const NAV = [
   { href: '/dashboard/alerts', label: 'Alerts' },
   { href: '/dashboard/donors', label: 'Donors' },
   { href: '/dashboard/camps', label: 'Camps' },
+  { href: '/dashboard/patients', label: 'Patients' },
+  { href: '/dashboard/history', label: 'History' },
 ];
 
 export default function DashboardShell({ children, title, subtitle }) {
