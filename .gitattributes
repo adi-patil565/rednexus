@@ -1,0 +1,24 @@
+# Normalize line endings: LF in the repo, native in the working copy.
+# Without this, Windows checkouts show every file as modified.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary — never touch
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.pkl binary
+*.joblib binary
+
+# Collapse lockfile noise in diffs and PR reviews
+package-lock.json linguist-generated=true -diff
+pnpm-lock.yaml    linguist-generated=true -diff
