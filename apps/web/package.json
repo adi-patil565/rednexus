@@ -5,20 +5,28 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "lucide-react": "^0.383.0",
-    "zustand": "^4.5.0",
+    "@rednexus/api": "*",
+    "@rednexus/design-tokens": "*",
+    "@rednexus/store": "*",
+    "@rednexus/types": "*",
+    "@rednexus/utils": "*",
+    "@rednexus/validators": "*",
     "@tanstack/react-query": "^5.0.0",
+    "firebase": "^10.12.0",
+    "lucide-react": "^0.383.0",
+    "next": "^16.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-hook-form": "^7.0.0",
     "zod": "^3.22.0",
-    "firebase": "^10.12.0"
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0"
   }
 }

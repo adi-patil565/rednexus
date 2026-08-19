@@ -2,22 +2,24 @@
   "name": "rednexus",
   "private": true,
   "workspaces": [
-    "apps/*",
+    "apps/web",
     "packages/*",
     "backend"
   ],
   "scripts": {
     "dev": "turbo run dev --filter=!rednexus",
     "build": "turbo run build --filter=!rednexus",
-    "lint": "turbo run lint --filter=!rednexus"
-  },
-  "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "lint": "turbo run lint --filter=!rednexus",
+    "test": "turbo run test --filter=!rednexus",
+    "db:migrate": "npm run db:migrate --workspace=@rednexus/backend",
+    "db:seed": "npm run db:seed --workspace=@rednexus/backend",
+    "db:studio": "npm run db:studio --workspace=@rednexus/backend",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
   },
   "overrides": {
-    "react": "$react",
-    "react-dom": "$react-dom"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "turbo": "^2.0.0"
