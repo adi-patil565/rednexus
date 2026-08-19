@@ -29,6 +29,9 @@ const FRIENDLY_ERRORS = {
   'auth/wrong-password': 'That email or password is not right.',
   'auth/too-many-requests': 'Too many attempts. Please wait a few minutes.',
   'auth/network-request-failed': 'Could not reach the server. Check your connection.',
+  'auth/operation-not-allowed':
+    'Email sign-in is switched off for this project. Enable it under Authentication > Sign-in method.',
+  'auth/user-disabled': 'This account has been disabled.',
   'auth/configuration-not-found':
     'Sign-in is not switched on for this project yet. Enable Authentication in the Firebase console.',
 };
@@ -51,7 +54,7 @@ export default function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email.trim(), password);
       router.replace('/dashboard');
     } catch (err) {
       setError(FRIENDLY_ERRORS[err.code] ?? 'Could not sign you in. Please try again.');
