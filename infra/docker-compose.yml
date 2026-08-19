@@ -1,24 +1,76 @@
-version: "3.9"
-services:
-  backend:
-    build: ../backend
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/rednexus
-      - REDIS_URL=redis://redis:6379
+# Raktasetu / RedNexus — local development stack.
+#
+# Run from the repo root:
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# Ports are published to the host so Prisma migrations and `npm run dev`
+# can run natively while the datastores live in containers.
 
+services:
   db:
-    image: postgres:16
+    # PostGIS, not plain postgres — donor/institution distance matching
+    # belongs in the database, not in application code (Rules section 3).
+    image: postgis/postgis:16-3.4
+    container_name: rednexus-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: rednexus
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Prisma migrations fail confusingly if they start before Postgres
+      # finishes its first-run initialisation.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d rednexus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   redis:
+    # BullMQ job queues: threshold recompute, breach detection (T5),
+    # eligibility reminders (F9), escalation timers (F5).
     image: redis:7-alpine
+    container_name: rednexus-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: rednexus-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    environment:
+      # Override host-oriented values with in-network service names
+      - DATABASE_URL=postgresql://postgres:password@db:5432/rednexus
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Opt-in: `docker compose --profile full up` runs the API in a
+    # container too. By default only the datastores start, and the API
+    # runs natively via `npm run dev` for fast reloads.
+    profiles:
+      - full
 
 volumes:
   pgdata:
+  redisdata:

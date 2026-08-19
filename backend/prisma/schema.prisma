@@ -1,0 +1,266 @@
+// Raktasetu — data model.
+//
+// Scope: Phase 1 (donor onboarding). Institution, User, Donor and
+// DonationRecord only. UsageRecord, BloodGroupThreshold, Request,
+// NotificationLog and Camp arrive in later phases — migrations are
+// additive, so there is no benefit to guessing them now.
+//
+// Field selection for Donor comes from the D Y Patil Hospital Blood
+// Centre donor questionnaire (DYPHRC/BC/MER/FM/01V_3.0). Only fields
+// that change how the SYSTEM behaves are stored. The medical and TTI
+// screening sections of that form stay on paper, answered in person at
+// the blood centre. See PRD "Non-Goals".
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  O_POS
+  O_NEG
+  AB_POS
+  AB_NEG
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum DonorStatus {
+  PROVISIONAL           // registered, first donation not yet confirmed
+  PENDING_REVIEW        // answered YES to "ever advised not to donate?"
+  ACTIVE                // in the targeting pool
+  PERMANENTLY_DEFERRED  // form page 4 Outcome: "Permanent deferral"
+}
+
+enum DonationType {
+  VOLUNTARY
+  REPLACEMENT
+}
+
+enum DeferralType {
+  TEMPORARY
+  PERMANENT
+}
+
+enum UserRole {
+  BLOOD_BANK_STAFF
+  PLATFORM_ADMIN
+}
+
+enum InstitutionCategory {
+  IN_HOUSE // embedded in one hospital
+  EXTERNAL // standalone, serves multiple hospitals
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum NotificationChannel {
+  PUSH
+  SMS
+  IVR
+  EMAIL
+}
+
+// ============================================================
+// User — staff and admin logins. Distinct from Donor.
+// ============================================================
+
+model User {
+  id          String   @id @default(uuid())
+  firebaseUid String   @unique // the ONLY link to Firebase Auth
+  name        String
+  email       String   @unique
+  phone       String?
+
+  // Server-controlled. Never settable from a client payload — that was
+  // the privilege-escalation path in the Firestore implementation.
+  role UserRole
+
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verifiedInstitutions Institution[]    @relation("InstitutionVerifier")
+  reviewedDonors       Donor[]          @relation("DonorReviewer")
+  recordedDonations    DonationRecord[] @relation("DonationRecorder")
+
+  @@index([institutionId])
+  @@map("users")
+}
+
+// ============================================================
+// Institution — always type BLOOD_BANK; category is context.
+// ============================================================
+
+model Institution {
+  id                 String              @id @default(uuid())
+  name               String
+  category           InstitutionCategory
+  linkedHospitalName String? // IN_HOUSE only; display context, not a login
+  pincode            String
+  address            String?
+
+  // Server-controlled. A blood bank cannot verify itself, and cannot
+  // act on the platform until a PLATFORM_ADMIN sets this to VERIFIED.
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verifiedByUserId   String?
+  verifiedBy         User?              @relation("InstitutionVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verifiedAt         DateTime?
+
+  // TODO(Phase 5): add `location geography(Point,4326)` for PostGIS
+  // distance ranking. Deferred so the first migration does not depend
+  // on the postgis extension. Pincode is sufficient until then.
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staff     User[]
+  donations DonationRecord[]
+
+  @@index([pincode])
+  @@index([verificationStatus])
+  @@map("institutions")
+}
+
+// ============================================================
+// Donor
+// ============================================================
+
+model Donor {
+  id String @id @default(uuid())
+
+  // Null until the donor claims the account. QR camp registration
+  // creates the record first; identity can be attached later.
+  firebaseUid String? @unique
+
+  // --- Identity (form page 1) ---
+  name        String
+  gender      Gender // drives the 90d male / 120d female interval
+  dateOfBirth DateTime // preferred over the form's free-text "Age"
+  phone       String // form: Contact Nos > Mobile. Resi/Office dropped.
+  email       String?
+
+  // Rules section 4: store location at the precision matching needs,
+  // not the full residential address the paper form collects.
+  areaPincode String
+
+  // --- Blood group: two fields, never merged (Rules section 2) ---
+  // The donor questionnaire does not ask blood group at all; it appears
+  // only on page 4, entered by the medical officer after testing. So a
+  // donor's answer at a QR camp is a CLAIM, and the blood centre's is a
+  // RESULT. Ranking logic must account for the difference.
+  bloodGroupSelfReported BloodGroup
+  bloodGroupVerified     BloodGroup?
+
+  // --- Donation history (form Q1) ---
+  donatedBefore      Boolean   @default(false)
+  priorDonationCount Int? // Q1.1 — seeds the repeat-donor ranking feature
+  lastDonationDate   DateTime? // Q1.2 — the eligibility clock
+
+  // --- Donation type (form header: Voluntary / Family-Replacement) ---
+  donationType DonationType @default(VOLUNTARY)
+  patientName  String? // only when donationType = REPLACEMENT
+
+  // --- Q1.5 "Have you ever been advised not to donate blood?" ---
+  // The app never interprets the reason. YES routes to a human,
+  // exactly as the paper form routes it to the doctor present.
+  advisedNotToDonateFlag Boolean @default(false)
+
+  status DonorStatus @default(PROVISIONAL)
+
+  // --- Deferral (form page 4, "Outcome") ---
+  // When set and in the future, overrides the standard interval.
+  // The form's free-text "Reasons for Deferral" is deliberately NOT
+  // stored: it is sensitive health data with no system behaviour
+  // attached to it. It stays on paper.
+  deferralUntilDate DateTime?
+  deferralType      DeferralType?
+  deferralSetByUserId String?
+  deferralSetBy       User?    @relation("DonorReviewer", fields: [deferralSetByUserId], references: [id], onDelete: SetNull)
+  deferralSetAt       DateTime?
+
+  // --- Consent (form page 3, DPDP Act 2023) ---
+  // Non-nullable by design: a donor record cannot exist without it.
+  // consentPurpose records what was agreed to, for purpose limitation.
+  consentAt      DateTime
+  consentPurpose String
+
+  // Consent (e): "I would like to be informed about any abnormal test
+  // results done on my donated blood." A donor CHOICE, to be honoured.
+  notifyAbnormalResults Boolean @default(false)
+
+  // F3 preference basics. Full profile lands in Phase 6.
+  preferredChannel NotificationChannel @default(SMS)
+
+  registeredAtCampId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  donations DonationRecord[]
+
+  // NOTE: eligibility is NOT a column. It is computed on read from
+  // lastDonationDate, gender and deferralUntilDate (Rules section 2).
+
+  @@index([bloodGroupSelfReported, areaPincode])
+  @@index([status])
+  @@index([phone])
+  @@map("donors")
+}
+
+// ============================================================
+// DonationRecord — created when a donation actually happens.
+// ============================================================
+
+model DonationRecord {
+  id      String   @id @default(uuid())
+  donorId String
+  donor   Donor    @relation(fields: [donorId], references: [id], onDelete: Cascade)
+  date    DateTime
+
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Restrict)
+
+  // Form page 4 "Hb Level". Feeds the F8 Hb trend.
+  hbValue Decimal? @db.Decimal(4, 1)
+
+  volumeMl Int?
+
+  // Set by staff at donation time; promotes the donor's verified group.
+  bloodGroupVerified BloodGroup?
+
+  recordedByUserId String?
+  recordedBy       User?   @relation("DonationRecorder", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+
+  // Populated from Phase 5 onward when a donation answers a Request.
+  requestId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([donorId, date])
+  @@index([institutionId, date])
+  @@map("donation_records")
+}
